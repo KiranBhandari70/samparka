@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,23 +15,24 @@ const userSchema = new mongoose.Schema(
     location: {
       type: {
         type: String,
-        default: "Point"
+        default: "Point",
       },
       coordinates: {
         type: [Number],
-        index: "2dsphere"
-      }
+        index: "2dsphere",
+      },
     },
 
     verified: { type: Boolean, default: false },
     citizenshipDocUrl: { type: String },
 
     createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now }
+    updatedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
+// Unique email index
 userSchema.index({ email: 1 }, { unique: true });
 
-module.exports = mongoose.model("User", userSchema);
+export default mongoose.model("User", userSchema);
