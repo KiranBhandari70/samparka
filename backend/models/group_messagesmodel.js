@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const groupMessageSchema = new mongoose.Schema({
   groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group", required: true },
@@ -8,4 +8,4 @@ const groupMessageSchema = new mongoose.Schema({
   sentAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model("GroupMessage", groupMessageSchema);
+export default mongoose.model("GroupMessage", groupMessageSchema);

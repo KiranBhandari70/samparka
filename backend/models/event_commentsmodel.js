@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const eventCommentSchema = new mongoose.Schema({
   eventId: { type: mongoose.Schema.Types.ObjectId, ref: "Event", required: true },
@@ -7,4 +7,4 @@ const eventCommentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model("EventComment", eventCommentSchema);
+export default mongoose.model("EventComment", eventCommentSchema);
