@@ -1,0 +1,121 @@
+import 'package:flutter/foundation.dart';
+
+import '../data/models/user_model.dart';
+import '../data/services/profile_service.dart';
+
+class UserProvider extends ChangeNotifier {
+  UserProvider() : _profileService = ProfileService.instance;
+
+  final ProfileService _profileService;
+
+  bool _isLoading = false;
+  String? _error;
+  UserModel? _currentUser;
+
+  bool get isLoading => _isLoading;
+  String? get error => _error;
+  UserModel? get currentUser => _currentUser;
+
+  Future<void> loadProfile() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      _currentUser = await _profileService.getProfile();
+      _setLoading(false);
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateProfile(Map<String, dynamic> userData) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      _currentUser = await _profileService.updateProfile(userData);
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> uploadAvatar(String imagePath) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final avatarUrl = await _profileService.uploadAvatar(imagePath);
+      if (_currentUser != null) {
+        _currentUser = UserModel(
+          id: _currentUser!.id,
+          name: _currentUser!.name,
+          username: _currentUser!.username,
+          avatarUrl: avatarUrl,
+          location: _currentUser!.location,
+          interests: _currentUser!.interests,
+        );
+      }
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateInterests(List<String> interests) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _profileService.updateInterests(interests);
+      if (_currentUser != null) {
+        _currentUser = UserModel(
+          id: _currentUser!.id,
+          name: _currentUser!.name,
+          username: _currentUser!.username,
+          avatarUrl: _currentUser!.avatarUrl,
+          location: _currentUser!.location,
+          interests: interests,
+        );
+      }
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+  }
+
+  void _setError(String? value) {
+    _error = value;
+  }
+
+  void _clearError() {
+    _error = null;
+  }
+
+  void clearError() {
+    _clearError();
+    notifyListeners();
+  }
+}
