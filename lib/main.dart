@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
+import 'core/constants/strings.dart';
+import 'core/theme/app_theme.dart';
+import 'presentation/navigation/main_shell.dart';
+import 'presentation/pages/auth/auth_page.dart';
+import 'presentation/pages/onboarding/onboarding_page.dart';
+import 'presentation/pages/settings/settings_page.dart';
+import 'presentation/pages/splash/splash_page.dart';
+import 'presentation/pages/home/event_detail_page.dart';
+import 'presentation/pages/groups/group_chat_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SamparkaApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SamparkaApp extends StatelessWidget {
+  const SamparkaApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+<<<<<<< HEAD
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.
@@ -117,6 +126,50 @@ class _MyHomePageState extends State<MyHomePage> {
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+=======
+      title: AppStrings.appName,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      initialRoute: SplashPage.routeName,
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case SplashPage.routeName:
+            return MaterialPageRoute(
+              builder: (_) => const SplashPage(),
+            );
+          case OnboardingPage.routeName:
+            return MaterialPageRoute(
+              builder: (_) => const OnboardingPage(),
+            );
+          case AuthPage.routeName:
+            return MaterialPageRoute(
+              builder: (_) => const AuthPage(),
+            );
+          case MainShell.routeName:
+            return MaterialPageRoute(
+              builder: (_) => const MainShell(),
+            );
+          case EventDetailPage.routeName:
+            final args = settings.arguments as EventDetailArgs;
+            return MaterialPageRoute(
+              builder: (_) => EventDetailPage(event: args.event),
+            );
+          case GroupChatPage.routeName:
+            final args = settings.arguments as GroupChatArgs;
+            return MaterialPageRoute(
+              builder: (_) => GroupChatPage(group: args.group),
+            );
+          case SettingsPage.routeName:
+            return MaterialPageRoute(
+              builder: (_) => const SettingsPage(),
+            );
+          default:
+            return MaterialPageRoute(
+              builder: (_) => const SplashPage(),
+            );
+        }
+      },
+>>>>>>> 75eb51e7cfe51262eba4afaa633f1e4d436378f7
     );
   }
 }
