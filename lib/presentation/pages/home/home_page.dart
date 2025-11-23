@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/event_model.dart';
-import '../../../data/services/mock_data.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
+import '../events/ticket_purchase_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,13 +18,34 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   EventCategory? _selectedCategory;
 
+  // REAL data must come from backend
+  List<CategoryModel> _categories = [];
+  List<EventModel> _events = [];
+
   List<EventModel> get _filteredEvents {
-    if (_selectedCategory == null) {
-      return MockData.featuredEvents;
-    }
-    return MockData.featuredEvents
+    if (_selectedCategory == null) return _events;
+    return _events
         .where((event) => event.category == _selectedCategory)
         .toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+    _loadEvents();
+  }
+
+  Future<void> _loadCategories() async {
+    // TODO: Replace with API call
+    // _categories = await apiService.getCategories();
+    setState(() {});
+  }
+
+  Future<void> _loadEvents() async {
+    // TODO: Replace with API call
+    // _events = await apiService.getEvents();
+    setState(() {});
   }
 
   @override
@@ -52,9 +72,10 @@ class _HomePageState extends State<HomePage> {
                       style: AppTextStyles.subtitle,
                     ),
                     const SizedBox(height: 24),
-                    _SearchField(),
+                    const _SearchField(),
                     const SizedBox(height: 24),
                     _CategoryFilter(
+                      categories: _categories,
                       selected: _selectedCategory,
                       onSelected: (category) {
                         setState(() => _selectedCategory = category);
@@ -72,13 +93,17 @@ class _HomePageState extends State<HomePage> {
                       event: event,
                       onDetails: () => Navigator.of(context).pushNamed(
                         EventDetailPage.routeName,
-                        arguments: EventDetailArgs(event: event),
+                        arguments: EventDetailPage(event: event),
                       ),
                       onJoin: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('You joined ${event.title}!'),
-                          ),
+                        Navigator.of(context).pushNamed(
+                          TicketPurchasePage.routeName,
+                          arguments: {
+                            'event': event,
+                            'ticketPrice': event.ticketTiers.isNotEmpty
+                                ? event.ticketTiers.first.price
+                                : 0.0,
+                          },
                         );
                       },
                     );
@@ -86,9 +111,7 @@ class _HomePageState extends State<HomePage> {
                   childCount: _filteredEvents.length,
                 ),
               ),
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 32),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
         ),
@@ -98,6 +121,8 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _SearchField extends StatelessWidget {
+  const _SearchField({super.key});
+
   @override
   Widget build(BuildContext context) {
     return TextField(
@@ -106,8 +131,7 @@ class _SearchField extends StatelessWidget {
         prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(24),
           borderSide: BorderSide.none,
@@ -118,17 +142,18 @@ class _SearchField extends StatelessWidget {
 }
 
 class _CategoryFilter extends StatelessWidget {
+  final List<CategoryModel> categories;
   final EventCategory? selected;
   final ValueChanged<EventCategory?> onSelected;
 
   const _CategoryFilter({
+    required this.categories,
     required this.selected,
     required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
-    final categories = MockData.categories;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -140,9 +165,9 @@ class _CategoryFilter extends StatelessWidget {
           ),
           ...categories.map(
                 (category) => _FilterChip(
-              label: category.label,
-              isActive: selected == category,
-              onTap: () => onSelected(category),
+              label: category.name,
+              isActive: selected?.label.toLowerCase() == category.name.toLowerCase(),
+              onTap: () => onSelected(EventCategoryX.fromString(category.name)),
             ),
           ),
         ],
@@ -189,4 +214,3 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-

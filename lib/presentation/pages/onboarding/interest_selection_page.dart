@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/services/mock_data.dart';
 import '../../widgets/primary_button.dart';
 import '../../navigation/main_shell.dart';
 

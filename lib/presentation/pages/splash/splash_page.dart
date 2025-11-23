@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
+import '../../../provider/auth_provider.dart';
 import '../onboarding/onboarding_page.dart';
+import '../../navigation/main_shell.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -21,9 +24,34 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
+    _checkAuthAndNavigate();
+  }
+
+  void _checkAuthAndNavigate() {
     _timer = Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed(OnboardingPage.routeName);
+      
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Wait for initialization to complete
+      if (authProvider.isInitializing) {
+        // Check again after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _checkAuthAndNavigate();
+        });
+        return;
+      }
+
+      if (authProvider.isAuthenticated && authProvider.userModel != null) {
+        // User is authenticated, go to main app
+        Navigator.of(context).pushReplacementNamed(
+          MainShell.routeName,
+          arguments: {'user': authProvider.userModel},
+        );
+      } else {
+        // User is not authenticated, go to onboarding
+        Navigator.of(context).pushReplacementNamed(OnboardingPage.routeName);
+      }
     });
   }
 

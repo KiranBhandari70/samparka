@@ -22,4 +22,24 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String settings = '/settings';
+
+  // Rewards routes
+  static const String rewardsDashboard = '/rewards-dashboard';
+  static const String partnerBusinesses = '/partner-businesses';
+
+  // Ticket routes
+  static const String ticketPurchase = '/ticket-purchase';
+
+  // Admin routes
+  static const String adminDashboard = '/admin-dashboard';
+  static const String adminUsers = '/admin-users';
+  static const String adminEvents = '/admin-events';
+
+  // Business routes
+  static const String businessDashboard = '/business-dashboard';
+  static const String businessEvents = '/business-events';
+  static const String businessPartners = '/business-partners';
+
+  // Explore routes
+  static const String categoryExplore = '/category-explore';
 }

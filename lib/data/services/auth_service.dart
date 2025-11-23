@@ -1,11 +1,13 @@
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
+import 'storage_service.dart';
 
 class AuthService {
   AuthService._();
 
   static final AuthService instance = AuthService._();
   final _apiClient = ApiClient.instance;
+  final _storageService = StorageService.instance;
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
@@ -21,7 +23,9 @@ class AuthService {
         final data = _apiClient.parseResponse(response);
         if (data != null) {
           // Store token if provided
-          // await _storageService.saveToken(data['token']);
+          if (data['token'] != null) {
+            await _storageService.saveToken(data['token'] as String);
+          }
           return data;
         }
         throw Exception('Invalid response format');
@@ -54,7 +58,9 @@ class AuthService {
         final data = _apiClient.parseResponse(response);
         if (data != null) {
           // Store token if provided
-          // await _storageService.saveToken(data['token']);
+          if (data['token'] != null) {
+            await _storageService.saveToken(data['token'] as String);
+          }
           return data;
         }
         throw Exception('Invalid response format');
@@ -70,10 +76,10 @@ class AuthService {
     try {
       await _apiClient.post(ApiEndpoints.logout);
       // Clear stored token
-      // await _storageService.clearToken();
+      await _storageService.clearToken();
     } catch (e) {
       // Even if API call fails, clear local token
-      // await _storageService.clearToken();
+      await _storageService.clearToken();
       throw Exception('Error during logout: $e');
     }
   }
@@ -136,7 +142,9 @@ class AuthService {
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
         final token = data?['token'] as String?;
-        // await _storageService.saveToken(token);
+        if (token != null) {
+          await _storageService.saveToken(token);
+        }
         return token;
       }
 
@@ -146,9 +154,8 @@ class AuthService {
     }
   }
 
-  bool get isAuthenticated {
+  Future<bool> isAuthenticated() async {
     // Check if token exists in storage
-    // return _storageService.hasToken();
-    return false;
+    return await _storageService.hasToken();
   }
 }

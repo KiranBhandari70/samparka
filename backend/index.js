@@ -1,103 +1,66 @@
-// Load environment variables first
-import dotenv from "dotenv";
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import connectDB from './config/database.js';
+import { config } from './config/env.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
 
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import db from "./config/db.js";
-import config from "./config/config.js";
-import { errorHandler, notFound } from "./middlewares/errormiddleware.js";
+// Routes
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import usersRoutes from './routes/usersRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
-// Import routes
-import authRoutes from "./routes/authroutes.js";
-import userRoutes from "./routes/usersroutes.js";
-import categoryRoutes from "./routes/categoriesroutes.js";
-import eventRoutes from "./routes/eventsroutes.js";
-import commentRoutes from "./routes/commentsroutes.js";
-import groupRoutes from "./routes/groupsroutes.js";
-import chatRoutes from "./routes/chatsroutes.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Initialize Express app
+// Connect to database
+connectDB();
+
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(morgan("dev"));
+app.use(cors({
+  origin: config.corsOrigin,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
     success: true,
-    message: "Server is running",
-    timestamp: new Date().toISOString()
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
   });
 });
 
-// API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/events", eventRoutes);
-app.use("/api/comments", commentRoutes);
-app.use("/api/groups", groupRoutes);
-app.use("/api/chats", chatRoutes);
-
-// 404 handler
-app.use(notFound);
+// API Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/users', usersRoutes); // For /users/:userId/events endpoint
+app.use('/api/v1/events', eventRoutes);
+app.use('/api/v1/groups', groupRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/search', searchRoutes);
 
 // Error handling middleware (must be last)
+app.use(notFound);
 app.use(errorHandler);
 
-// Start server
-const PORT = config.PORT || 5000;
+const PORT = config.port;
 
-const startServer = async () => {
-  try {
-    // Connect to database
-    await db.connect();
-
-    // Start listening
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
-};
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
-  // Close server & exit process
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM signal received: closing HTTP server");
-  await db.disconnect();
-  process.exit(0);
-});
-
-process.on("SIGINT", async () => {
-  console.log("SIGINT signal received: closing HTTP server");
-  await db.disconnect();
-  process.exit(0);
-});
-
-// Start the server
-startServer();
-
-export default app;
 

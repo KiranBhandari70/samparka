@@ -63,7 +63,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
       body: SafeArea(
         child: Column(
           children: [
+            // 🔹 PageView with slides
             Expanded(
+              flex: 12,
               child: PageView.builder(
                 controller: _controller,
                 itemCount: _slides.length,
@@ -76,54 +78,60 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _slides.length,
-                          (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        height: 10,
-                        width: index == _currentIndex ? 32 : 10,
-                        decoration: BoxDecoration(
-                          color: index == _currentIndex
-                              ? AppColors.primary
-                              : AppColors.chipBackground,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: _finish,
-                        child: const Text(
-                          'Skip',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
+
+            // 🔹 Indicators + Buttons
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Column(
+                  children: [
+                    // Indicators
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(
+                        _slides.length,
+                            (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          height: 10,
+                          width: index == _currentIndex ? 32 : 10,
+                          decoration: BoxDecoration(
+                            color: index == _currentIndex
+                                ? AppColors.primary
+                                : AppColors.chipBackground,
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
-                      SizedBox(
-                        width: 140,
-                        child: PrimaryButton(
-                          label: _currentIndex == _slides.length - 1
-                              ? 'Get Started'
-                              : 'Next',
-                          onPressed: _handleNext,
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: _finish,
+                          child: const Text(
+                            'Skip',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        SizedBox(
+                          width: 140,
+                          child: PrimaryButton(
+                            label: _currentIndex == _slides.length - 1
+                                ? 'Get Started'
+                                : 'Next',
+                            onPressed: _handleNext,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -154,6 +162,7 @@ class _OnboardingSlideView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        // 🔹 Icon Section
         Expanded(
           flex: 12,
           child: Container(
@@ -192,12 +201,14 @@ class _OnboardingSlideView extends StatelessWidget {
             ),
           ),
         ),
+
+        // 🔹 Text Section
         Expanded(
-          flex: 10,
+          flex: 6,
           child: Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
                   slide.title,
@@ -213,7 +224,7 @@ class _OnboardingSlideView extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
-                    height: 1.5,
+                    height: 1.6,
                   ),
                 ),
               ],
@@ -224,5 +235,3 @@ class _OnboardingSlideView extends StatelessWidget {
     );
   }
 }
-
-

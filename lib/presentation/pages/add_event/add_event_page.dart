@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/utils/permission_helper.dart';
 import '../../../data/models/category_model.dart';
 
 class AddEventPage extends StatefulWidget {
@@ -18,6 +21,8 @@ class _AddEventPageState extends State<AddEventPage> {
   EventCategory? _selectedCategory;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  File? _selectedImage;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void dispose() {
@@ -47,6 +52,45 @@ class _AddEventPageState extends State<AddEventPage> {
     );
     if (picked != null) {
       setState(() => _selectedTime = picked);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      // Request permission first
+      final hasPermission = await PermissionHelper.requestImagePermission();
+      if (!hasPermission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Permission denied. Please enable photo access in settings.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -93,7 +137,10 @@ class _AddEventPageState extends State<AddEventPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _UploadPlaceholder(onTap: () {}),
+                    _UploadPlaceholder(
+                      onTap: _pickImage,
+                      selectedImage: _selectedImage,
+                    ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _titleController,
@@ -211,8 +258,12 @@ class _AddEventPageState extends State<AddEventPage> {
 
 class _UploadPlaceholder extends StatelessWidget {
   final VoidCallback onTap;
+  final File? selectedImage;
 
-  const _UploadPlaceholder({required this.onTap});
+  const _UploadPlaceholder({
+    required this.onTap,
+    this.selectedImage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,20 +281,30 @@ class _UploadPlaceholder extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.cloud_upload_rounded,
-                  size: 40, color: AppColors.textMuted),
-              SizedBox(height: 8),
-              Text(
-                'Upload event image',
-                style: TextStyle(color: AppColors.textMuted),
+        child: selectedImage != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.file(
+                  selectedImage!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 140,
+                ),
+              )
+            : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.cloud_upload_rounded,
+                        size: 40, color: AppColors.textMuted),
+                    SizedBox(height: 8),
+                    Text(
+                      'Upload event image',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }

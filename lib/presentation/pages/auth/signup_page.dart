@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
+import '../../../provider/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../auth/auth_page.dart';
 import '../../navigation/main_shell.dart';
@@ -31,9 +33,29 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  void _handleSignUp() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.of(context).pushReplacementNamed(MainShell.routeName);
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.register(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    if (success && authProvider.userModel != null) {
+      Navigator.of(context).pushReplacementNamed(
+        MainShell.routeName,
+        arguments: {'user': authProvider.userModel},
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error ?? 'Registration failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -139,9 +161,13 @@ class _SignUpPageState extends State<SignUpPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    PrimaryButton(
-                      label: 'SIGN UP',
-                      onPressed: _handleSignUp,
+                    Consumer<AuthProvider>(
+                      builder: (context, authProvider, _) {
+                        return PrimaryButton(
+                          label: 'SIGN UP',
+                          onPressed: authProvider.isLoading ? null : _handleSignUp,
+                        );
+                      },
                     ),
                   ],
                 ),

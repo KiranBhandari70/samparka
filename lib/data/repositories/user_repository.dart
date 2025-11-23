@@ -15,8 +15,7 @@ class UserRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to UserModel
-        throw UnimplementedError('Parse user from JSON');
+        return UserModel.fromJson(data ?? {});
       }
 
       throw Exception('Failed to load profile: ${response.statusCode}');
@@ -34,8 +33,9 @@ class UserRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to UserModel
-        throw UnimplementedError('Parse user from JSON');
+        // Backend returns { success: true, user: {...} }
+        final userData = data?['user'] ?? data;
+        return UserModel.fromJson(userData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to update profile: ${response.statusCode}');
@@ -80,9 +80,11 @@ class UserRepository {
       final response = await _apiClient.get(ApiEndpoints.userEvents(userId));
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to EventModel list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, events: [...] }
+        final data = responseData?['events'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => EventModel.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load user events: ${response.statusCode}');

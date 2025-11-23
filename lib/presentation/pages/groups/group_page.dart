@@ -4,19 +4,23 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/group_model.dart';
-import '../../../data/services/mock_data.dart';
 import '../../widgets/group_tile.dart';
 import 'group_chat_page.dart';
+import 'create_group_page.dart';
 
 class GroupPage extends StatelessWidget {
-  const GroupPage({super.key});
+  final List<GroupModel> groups; // <-- Real groups from backend
+
+  const GroupPage({
+    super.key,
+    required this.groups, // <-- Pass real list here
+  });
 
   @override
   Widget build(BuildContext context) {
-    final myGroups =
-    MockData.groups.where((group) => group.isJoined).toList();
-    final suggestedGroups =
-    MockData.groups.where((group) => !group.isJoined).toList();
+    // Separate joined and suggested groups
+    final myGroups = groups.where((group) => group.isJoined).toList();
+    final suggestedGroups = groups.where((group) => !group.isJoined).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -26,6 +30,8 @@ class GroupPage extends StatelessWidget {
           child: ListView(
             children: [
               const SizedBox(height: 16),
+
+              /// HEADER
               Row(
                 children: [
                   Text(
@@ -34,20 +40,27 @@ class GroupPage extends StatelessWidget {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.add_circle_rounded,
-                        color: AppColors.primary),
+                    onPressed: () {
+                      Navigator.of(context).pushNamed(CreateGroupPage.routeName);
+                    },
+                    icon: const Icon(
+                      Icons.add_circle_rounded,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
+
               Text(
                 'Stay connected with your communities',
                 style: AppTextStyles.subtitle,
               ),
               const SizedBox(height: 24),
+
+              /// MY GROUPS
               if (myGroups.isNotEmpty) ...[
-                _SectionTitle(
+                const _SectionTitle(
                   title: 'My Groups',
                   icon: Icons.star_rounded,
                 ),
@@ -57,25 +70,39 @@ class GroupPage extends StatelessWidget {
                     group: group,
                     onTap: () => _openChat(context, group),
                     onPrimaryAction: () => _openChat(context, group),
-                  ),
+                        onChatTap: () {
+                          _openChat(context, group);
+                        },
+
+                      ),
                 ),
                 const SizedBox(height: 24),
               ],
-              _SectionTitle(
+
+              /// SUGGESTED GROUPS
+              const _SectionTitle(
                 title: 'Suggested Groups',
                 icon: Icons.recommend_rounded,
               ),
               const SizedBox(height: 16),
+
               ...suggestedGroups.map(
                     (group) => GroupTile(
                   group: group,
                   onPrimaryAction: () {
+                    // You will replace this with backend join logic
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Joined ${group.name}!')),
                     );
+                    _openChat(context, group);
                   },
-                ),
+                      onChatTap: () {
+                        _openChat(context, group);
+                      },
+
+                    ),
               ),
+
               const SizedBox(height: 32),
             ],
           ),
@@ -115,4 +142,3 @@ class _SectionTitle extends StatelessWidget {
     );
   }
 }
-

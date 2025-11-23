@@ -27,9 +27,11 @@ class EventRepository {
       );
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to EventModel list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, events: [...] }
+        final data = responseData?['events'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => EventModel.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load events: ${response.statusCode}');
@@ -44,8 +46,7 @@ class EventRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to EventModel
-        throw UnimplementedError('Parse event from JSON');
+        return EventModel.fromJson(data ?? {});
       }
 
       throw Exception('Failed to load event: ${response.statusCode}');
@@ -63,8 +64,9 @@ class EventRepository {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to EventModel
-        throw UnimplementedError('Parse event from JSON');
+        // Backend returns { success: true, event: {...} }
+        final eventData = data?['event'] ?? data;
+        return EventModel.fromJson(eventData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to create event: ${response.statusCode}');
@@ -82,8 +84,9 @@ class EventRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to EventModel
-        throw UnimplementedError('Parse event from JSON');
+        // Backend returns { success: true, event: {...} }
+        final eventData = data?['event'] ?? data;
+        return EventModel.fromJson(eventData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to update event: ${response.statusCode}');

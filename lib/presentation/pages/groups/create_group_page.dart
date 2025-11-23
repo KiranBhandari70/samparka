@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/utils/permission_helper.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/services/mock_data.dart';
 import '../../widgets/primary_button.dart';
 
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
+
+  static const String routeName = '/create-group';
 
   @override
   State<CreateGroupPage> createState() => _CreateGroupPageState();
@@ -18,12 +22,65 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   EventCategory? _selectedCategory;
+  File? _selectedImage;
+  final ImagePicker _imagePicker = ImagePicker();
+
+  // Sample categories
+  final List<CategoryModel> _categories = [
+    CategoryModel(id: '1', name: 'Music'),
+    CategoryModel(id: '2', name: 'Tech'),
+    CategoryModel(id: '3', name: 'Sports'),
+    CategoryModel(id: '4', name: 'Food'),
+    CategoryModel(id: '5', name: 'Art'),
+    CategoryModel(id: '6', name: 'Wellness'),
+    CategoryModel(id: '7', name: 'Social'),
+    CategoryModel(id: '8', name: 'Others'),
+  ];
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      // Request permission first
+      final hasPermission = await PermissionHelper.requestImagePermission();
+      if (!hasPermission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Permission denied. Please enable photo access in settings.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _submit() {
@@ -34,13 +91,17 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
         ),
       );
       Navigator.of(context).pop();
+    } else if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a category'),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = MockData.categories;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -58,7 +119,10 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _UploadPlaceholder(onTap: () {}),
+                _UploadPlaceholder(
+                  onTap: _pickImage,
+                  selectedImage: _selectedImage,
+                ),
                 const SizedBox(height: 24),
                 TextFormField(
                   controller: _nameController,
@@ -85,11 +149,12 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children: categories.map((category) {
+                  children: _categories.map((category) {
                     return _CategoryChip(
-                      label: category.label,
-                      isSelected: _selectedCategory == category,
-                      onTap: () => setState(() => _selectedCategory = category),
+                      label: category.name,
+                      isSelected: _selectedCategory == EventCategoryX.fromString(category.name),
+                      onTap: () => setState(() =>
+                      _selectedCategory = EventCategoryX.fromString(category.name)),
                     );
                   }).toList(),
                 ),
@@ -127,8 +192,12 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
 class _UploadPlaceholder extends StatelessWidget {
   final VoidCallback onTap;
+  final File? selectedImage;
 
-  const _UploadPlaceholder({required this.onTap});
+  const _UploadPlaceholder({
+    required this.onTap,
+    this.selectedImage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -146,20 +215,30 @@ class _UploadPlaceholder extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.cloud_upload_rounded,
-                  size: 40, color: AppColors.textMuted),
-              SizedBox(height: 8),
-              Text(
-                'Upload group image',
-                style: TextStyle(color: AppColors.textMuted),
+        child: selectedImage != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.file(
+                  selectedImage!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: 140,
+                ),
+              )
+            : Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.cloud_upload_rounded,
+                        size: 40, color: AppColors.textMuted),
+                    SizedBox(height: 8),
+                    Text(
+                      'Upload group image',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }

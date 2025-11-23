@@ -1,18 +1,121 @@
 class UserModel {
   final String id;
   final String name;
-  final String username;
-  final String avatarUrl;
-  final String location;
+  final String email;
+  final String? passwordHash;
+  final String authProvider; // "email" or "google"
+  final int? age;
   final List<String> interests;
+  final String? bio;
+  final String? avatarUrl;
+  final String? locationLabel;
+  final Location? location; // GeoJSON Point with coordinates
+  final String role; // "member", "admin", or "business"
+  final String verificationStatus; // "not_submitted", "pending", "approved", "rejected"
+  final bool verified;
+  final double rewardBalance;
+  final bool blocked;
+  final String? businessProfile; // ObjectId reference
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   const UserModel({
     required this.id,
     required this.name,
-    required this.username,
-    required this.avatarUrl,
-    required this.location,
+    required this.email,
+    this.passwordHash,
+    this.authProvider = "email",
+    this.age,
     this.interests = const [],
+    this.bio,
+    this.avatarUrl,
+    this.locationLabel,
+    this.location,
+    this.role = "member",
+    this.verificationStatus = "not_submitted",
+    this.verified = false,
+    this.rewardBalance = 0.0,
+    this.blocked = false,
+    this.businessProfile,
+    required this.createdAt,
+    required this.updatedAt,
   });
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      id: json['_id'] ?? json['id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      passwordHash: json['passwordHash'],
+      authProvider: json['authProvider'] ?? 'email',
+      age: json['age'],
+      interests: json['interests'] != null ? List<String>.from(json['interests']) : [],
+      bio: json['bio'],
+      avatarUrl: json['avatarUrl'],
+      locationLabel: json['locationLabel'],
+      location: json['location'] != null ? Location.fromJson(json['location']) : null,
+      role: json['role'] ?? 'member',
+      verificationStatus: json['verificationStatus'] ?? 'not_submitted',
+      verified: json['verified'] ?? false,
+      rewardBalance: (json['rewardBalance'] ?? 0).toDouble(),
+      blocked: json['blocked'] ?? false,
+      businessProfile: json['businessProfile']?.toString(),
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      '_id': id,
+      'name': name,
+      'email': email,
+      'passwordHash': passwordHash,
+      'authProvider': authProvider,
+      'age': age,
+      'interests': interests,
+      'bio': bio,
+      'avatarUrl': avatarUrl,
+      'locationLabel': locationLabel,
+      'location': location?.toJson(),
+      'role': role,
+      'verificationStatus': verificationStatus,
+      'verified': verified,
+      'rewardBalance': rewardBalance,
+      'blocked': blocked,
+      'businessProfile': businessProfile,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
+  }
+}
+
+class Location {
+  final String type; // "Point"
+  final List<double> coordinates; // [longitude, latitude]
+
+  const Location({
+    this.type = "Point",
+    required this.coordinates,
+  });
+
+  factory Location.fromJson(Map<String, dynamic> json) {
+    return Location(
+      type: json['type'] ?? 'Point',
+      coordinates: json['coordinates'] != null 
+          ? List<double>.from(json['coordinates'].map((x) => x.toDouble()))
+          : [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'coordinates': coordinates,
+    };
+  }
+
+  double? get longitude => coordinates.isNotEmpty ? coordinates[0] : null;
+  double? get latitude => coordinates.length > 1 ? coordinates[1] : null;
 }
 

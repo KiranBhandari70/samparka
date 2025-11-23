@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../provider/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../onboarding/onboarding_page.dart';
 import '../../navigation/main_shell.dart';
@@ -44,8 +46,37 @@ class _AuthPageState extends State<AuthPage> {
     setState(() => _isLogin = isLogin);
   }
 
-  void _submit() {
-    Navigator.of(context).pushReplacementNamed(MainShell.routeName);
+  Future<void> _submit() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = _isLogin
+        ? await authProvider.login(_emailController.text, _passwordController.text)
+        : await authProvider.register(
+            email: _emailController.text,
+            password: _passwordController.text,
+          );
+
+    if (!mounted) return;
+
+    if (success && authProvider.userModel != null) {
+      Navigator.of(context).pushReplacementNamed(
+        MainShell.routeName,
+        arguments: {'user': authProvider.userModel},
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error ?? 'Authentication failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -189,7 +220,14 @@ class _AuthPageState extends State<AuthPage> {
                           ),
                         ],
                         const SizedBox(height: 24),
-                        PrimaryButton(label: buttonText, onPressed: _submit),
+                        Consumer<AuthProvider>(
+                          builder: (context, authProvider, _) {
+                            return PrimaryButton(
+                              label: buttonText,
+                              onPressed: authProvider.isLoading ? null : _submit,
+                            );
+                          },
+                        ),
                         const SizedBox(height: 20),
                         Row(
                           children: [

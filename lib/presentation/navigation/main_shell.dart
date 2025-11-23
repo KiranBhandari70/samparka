@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import '../../data/models/user_model.dart';
 import '../pages/add_event/add_event_page.dart';
 import '../pages/explore/explore_page.dart';
 import '../pages/groups/group_page.dart';
@@ -7,7 +8,12 @@ import '../pages/home/home_page.dart';
 import '../pages/profile/profile_page.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final UserModel user;
+
+  const MainShell({
+    super.key,
+    required this.user,
+  });
 
   static const String routeName = '/home';
 
@@ -17,14 +23,24 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = const [
-    HomePage(),
-    ExplorePage(),
-    AddEventPage(),
-    GroupPage(),
-    ProfilePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    // Pages with actual logged-in user
+    _pages = [
+      const HomePage(),
+      const ExplorePage(),
+      const AddEventPage(),
+      GroupPage(
+        groups: [], // <-- pass real groups here
+      ),
+      ProfilePage(user: widget.user),
+    ];
+
+  }
 
   void _onItemTapped(int index) {
     setState(() => _currentIndex = index);
@@ -84,5 +100,3 @@ class _PlusIcon extends StatelessWidget {
     );
   }
 }
-
-

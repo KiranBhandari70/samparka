@@ -13,7 +13,7 @@ class GroupTile extends StatelessWidget {
     super.key,
     required this.group,
     this.onTap,
-    this.onPrimaryAction,
+    this.onPrimaryAction, required Null Function() onChatTap,
   });
 
   @override
@@ -41,10 +41,29 @@ class GroupTile extends StatelessWidget {
               const BorderRadius.vertical(top: Radius.circular(28)),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Image.network(
-                  group.imageUrl,
-                  fit: BoxFit.cover,
-                ),
+                child: group.imageUrl.isNotEmpty
+                    ? Image.network(
+                        group.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: AppColors.border,
+                            child: const Icon(
+                              Icons.groups_rounded,
+                              size: 60,
+                              color: AppColors.textMuted,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
+                        color: AppColors.border,
+                        child: const Icon(
+                          Icons.groups_rounded,
+                          size: 60,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
               ),
             ),
             Padding(

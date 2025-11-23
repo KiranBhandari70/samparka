@@ -2,19 +2,35 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../config/environment.dart';
+import '../services/storage_service.dart';
 
 class ApiClient {
   ApiClient._();
 
   static final ApiClient instance = ApiClient._();
+  final _storageService = StorageService.instance;
 
   String get baseUrl => Environment.apiBaseUrl;
 
-  Map<String, String> get _defaultHeaders => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    if (Environment.apiKey.isNotEmpty) 'Authorization': 'Bearer ${Environment.apiKey}',
-  };
+  Future<Map<String, String>> _getHeaders({Map<String, String>? additionalHeaders}) async {
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    // Add JWT token if available
+    final token = await _storageService.getToken();
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+
+    // Add any additional headers
+    if (additionalHeaders != null) {
+      headers.addAll(additionalHeaders);
+    }
+
+    return headers;
+  }
 
   Future<http.Response> get(
       String endpoint, {
@@ -27,9 +43,10 @@ class ApiClient {
       ),
     );
 
+    final requestHeaders = await _getHeaders(additionalHeaders: headers);
     final response = await http.get(
       uri,
-      headers: {..._defaultHeaders, ...?headers},
+      headers: requestHeaders,
     );
 
     return response;
@@ -43,9 +60,10 @@ class ApiClient {
       }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
 
+    final requestHeaders = await _getHeaders(additionalHeaders: headers);
     final response = await http.post(
       uri,
-      headers: {..._defaultHeaders, ...?headers},
+      headers: requestHeaders,
       body: bodyObject ?? (body != null ? jsonEncode(body) : null),
     );
 
@@ -60,9 +78,10 @@ class ApiClient {
       }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
 
+    final requestHeaders = await _getHeaders(additionalHeaders: headers);
     final response = await http.put(
       uri,
-      headers: {..._defaultHeaders, ...?headers},
+      headers: requestHeaders,
       body: bodyObject ?? (body != null ? jsonEncode(body) : null),
     );
 
@@ -77,9 +96,10 @@ class ApiClient {
       }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
 
+    final requestHeaders = await _getHeaders(additionalHeaders: headers);
     final response = await http.patch(
       uri,
-      headers: {..._defaultHeaders, ...?headers},
+      headers: requestHeaders,
       body: bodyObject ?? (body != null ? jsonEncode(body) : null),
     );
 
@@ -92,9 +112,10 @@ class ApiClient {
       }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
 
+    final requestHeaders = await _getHeaders(additionalHeaders: headers);
     final response = await http.delete(
       uri,
-      headers: {..._defaultHeaders, ...?headers},
+      headers: requestHeaders,
     );
 
     return response;

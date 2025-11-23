@@ -25,9 +25,11 @@ class GroupService {
       );
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to GroupModel list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, groups: [...] }
+        final data = responseData?['groups'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => GroupModel.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load groups: ${response.statusCode}');
@@ -42,8 +44,9 @@ class GroupService {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupModel
-        throw UnimplementedError('Parse group from JSON');
+        // Backend returns { success: true, group: {...} }
+        final groupData = data?['group'] ?? data;
+        return GroupModel.fromJson(groupData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to load group: ${response.statusCode}');
@@ -61,8 +64,9 @@ class GroupService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupModel
-        throw UnimplementedError('Parse group from JSON');
+        // Backend returns { success: true, group: {...} }
+        final groupData = data?['group'] ?? data;
+        return GroupModel.fromJson(groupData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to create group: ${response.statusCode}');
@@ -100,9 +104,11 @@ class GroupService {
       final response = await _apiClient.get(ApiEndpoints.groupMessages(groupId));
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to GroupMessage list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, messages: [...] }
+        final data = responseData?['messages'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => GroupMessage.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load messages: ${response.statusCode}');
@@ -120,8 +126,9 @@ class GroupService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupMessage
-        throw UnimplementedError('Parse message from JSON');
+        // Backend returns { success: true, message: {...} }
+        final messageData = data?['message'] ?? data;
+        return GroupMessage.fromJson(messageData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to send message: ${response.statusCode}');

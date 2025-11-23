@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:samparka/data/models/category_model.dart';
 import '../../core/constants/colors.dart';
 import '../../core/theme/text_styles.dart';
-import '../../data/models/category_model.dart';
 import '../../data/models/event_model.dart';
-import '../../data/services/mock_data.dart';
 
 class EventCard extends StatelessWidget {
   final EventModel event;
@@ -21,8 +20,6 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = MockData.categoryColors(event.category);
-
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -39,53 +36,18 @@ class EventCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: Image.network(
-                    event.imageUrl,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 16,
-                top: 16,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: colors),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    event.category.label,
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildImageStack(),
           Padding(
             padding:
             const EdgeInsets.symmetric(horizontal: 24).copyWith(top: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  event.title,
-                  style: AppTextStyles.heading3,
-                ),
+                Text(event.title, style: AppTextStyles.heading3),
                 const SizedBox(height: 12),
                 _EventInfoRow(
                   icon: Icons.calendar_month_rounded,
-                  label:
-                  '${_formatDate(event.dateTime)}, ${event.timeLabel}',
+                  label: '${_formatDate(event.dateTime)}, ${event.timeLabel}',
                 ),
                 const SizedBox(height: 8),
                 _EventInfoRow(
@@ -95,8 +57,7 @@ class EventCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 _EventInfoRow(
                   icon: Icons.people_alt_rounded,
-                  label:
-                  '${event.attendeeCount}/${event.capacity} going',
+                  label: '${event.attendeeCount}/${event.capacity} going',
                 ),
                 const SizedBox(height: 20),
                 if (showActions)
@@ -138,30 +99,51 @@ class EventCard extends StatelessWidget {
     );
   }
 
+  Widget _buildImageStack() {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: AspectRatio(
+            aspectRatio: 16 / 10,
+            child: Image.network(
+              event.imageUrlOrPlaceholder,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported, size: 40),
+                );
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          right: 16,
+          top: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: event.categoryColors),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              event.category.label,
+              style: AppTextStyles.caption.copyWith(color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   String _formatDate(DateTime date) {
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final weekday = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ][date.weekday - 1];
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final weekday = weekdays[date.weekday - 1];
     return '$weekday, ${months[date.month - 1]} ${date.day}';
   }
 }
@@ -170,10 +152,7 @@ class _EventInfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _EventInfoRow({
-    required this.icon,
-    required this.label,
-  });
+  const _EventInfoRow({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -184,13 +163,10 @@ class _EventInfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: AppTextStyles.body.copyWith(
-              color: AppColors.textSecondary,
-            ),
+            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
           ),
         ),
       ],
     );
   }
 }
-

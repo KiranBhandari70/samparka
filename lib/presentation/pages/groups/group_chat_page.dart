@@ -19,7 +19,8 @@ class GroupChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final messages = group.messages;
+    final messages = group.messages; // messages list (can be empty)
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -30,7 +31,8 @@ class GroupChatPage extends StatelessWidget {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(group.name, style: AppTextStyles.heading3.copyWith(fontSize: 18)),
+            Text(group.name,
+                style: AppTextStyles.heading3.copyWith(fontSize: 18)),
             Text(
               '${group.memberCount} members • ${group.onlineCount} online',
               style: AppTextStyles.caption,
@@ -46,19 +48,23 @@ class GroupChatPage extends StatelessWidget {
       ),
       body: Column(
         children: [
+          // Chat messages
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               itemCount: messages.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  return const _ChatDateLabel(label: 'Today, 10:55 PM');
+                  return const _ChatDateLabel(label: 'Today');
                 }
                 final message = messages[index - 1];
                 return _MessageBubble(message: message);
               },
             ),
           ),
+
+          // Input field
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(
@@ -80,8 +86,8 @@ class GroupChatPage extends StatelessWidget {
                   onPressed: () {},
                 ),
                 IconButton(
-                  icon:
-                  const Icon(Icons.emoji_emotions_rounded, color: AppColors.primary),
+                  icon: const Icon(Icons.emoji_emotions_rounded,
+                      color: AppColors.primary),
                   onPressed: () {},
                 ),
                 Expanded(
@@ -119,6 +125,9 @@ class GroupChatPage extends StatelessWidget {
   }
 }
 
+// ----------------------------
+// Date Label Widget
+// ----------------------------
 class _ChatDateLabel extends StatelessWidget {
   final String label;
 
@@ -152,6 +161,9 @@ class _ChatDateLabel extends StatelessWidget {
   }
 }
 
+// ----------------------------
+// Message Bubble Widget
+// ----------------------------
 class _MessageBubble extends StatelessWidget {
   final GroupMessage message;
 
@@ -160,7 +172,8 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOwn = message.isOwn;
-    final alignment = isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final alignment =
+    isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final bubbleColor = isOwn ? AppColors.primary : Colors.white;
     final textColor = isOwn ? Colors.white : AppColors.textPrimary;
 
@@ -172,16 +185,18 @@ class _MessageBubble extends StatelessWidget {
           if (!isOwn)
             Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
+              children: const [
                 CircleAvatar(
-                  backgroundImage: NetworkImage(message.sender.avatarUrl),
+                  backgroundColor: Colors.grey,
                   radius: 16,
+                  child: Icon(Icons.person, size: 16),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
-                  message.sender.name,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
+                  'User', // Placeholder sender name
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
                   ),
                 ),
               ],
@@ -220,4 +235,3 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 }
-
