@@ -36,7 +36,7 @@ app.use(morgan('dev'));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check
+// Health check (optional)
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -45,10 +45,19 @@ app.get('/health', (req, res) => {
   });
 });
 
+// 🔥 Default root route to fix "Not Found - /"
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Samparka Backend is Live 🚀',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/user', userRoutes);
-app.use('/api/v1/users', usersRoutes); // For /users/:userId/events endpoint
+app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/events', eventRoutes);
 app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/categories', categoryRoutes);
@@ -63,4 +72,3 @@ const PORT = config.port;
 app.listen(PORT, () => {
   console.log(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
-
