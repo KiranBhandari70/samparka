@@ -48,10 +48,12 @@ const userSchema = new mongoose.Schema(
         type: String,
         enum: ['Point'],
         default: 'Point',
+        required: true,
       },
       coordinates: {
-        type: [Number],
-        default: undefined,
+        type: [Number], // [longitude, latitude]
+        required: true,
+        default: [0, 0], // optional default if not provided
       },
     },
     role: {
@@ -93,20 +95,20 @@ userSchema.index({ location: '2dsphere' });
 // Index for email
 userSchema.index({ email: 1 });
 
-// Method to hash password
+// Hash password before saving
 userSchema.methods.hashPassword = async function (password) {
   const salt = await bcrypt.genSalt(10);
   this.passwordHash = await bcrypt.hash(password, salt);
   return this.passwordHash;
 };
 
-// Method to compare password
+// Compare password
 userSchema.methods.comparePassword = async function (password) {
   if (!this.passwordHash) return false;
   return await bcrypt.compare(password, this.passwordHash);
 };
 
-// Method to remove sensitive data
+// Remove sensitive data when returning user
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
@@ -116,4 +118,3 @@ userSchema.methods.toJSON = function () {
 const User = mongoose.model('User', userSchema);
 
 export default User;
-
