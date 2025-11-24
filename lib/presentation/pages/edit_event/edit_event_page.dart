@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
@@ -7,37 +6,50 @@ import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/permission_helper.dart';
 import '../../../data/models/category_model.dart';
-import '../../../provider/auth_provider.dart';
+import '../../../data/models/event_model.dart';
 import '../../../provider/event_provider.dart';
-import '../../navigation/main_shell.dart';
+import 'package:image_picker/image_picker.dart';
 
-class AddEventPage extends StatefulWidget {
-  const AddEventPage({super.key});
+class EditEventPage extends StatefulWidget {
+  final EventModel event;
+
+  const EditEventPage({
+    super.key,
+    required this.event,
+  });
+
+  static const String routeName = '/edit-event';
 
   @override
-  State<AddEventPage> createState() => _AddEventPageState();
+  State<EditEventPage> createState() => _EditEventPageState();
 }
 
-class _AddEventPageState extends State<AddEventPage> {
-  final _titleController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _capacityController = TextEditingController(text: '50');
-  final _tagsController = TextEditingController();
-  EventCategory? _selectedCategory;
+class _EditEventPageState extends State<EditEventPage> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _descriptionController;
+  late EventCategory? _selectedCategory;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   File? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
-  final List<Map<String, dynamic>> _ticketTiers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.event.title);
+    _descriptionController = TextEditingController(text: widget.event.description ?? '');
+    _addressController = TextEditingController(text: widget.event.location?.placeName ?? '');
+    _selectedCategory = widget.event.category;
+    _selectedDate = widget.event.startsAt;
+    _selectedTime = TimeOfDay.fromDateTime(widget.event.startsAt);
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _addressController.dispose();
     _descriptionController.dispose();
-    _capacityController.dispose();
-    _tagsController.dispose();
     super.dispose();
   }
 
@@ -45,7 +57,7 @@ class _AddEventPageState extends State<AddEventPage> {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: _selectedDate ?? now,
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
     );
@@ -57,81 +69,15 @@ class _AddEventPageState extends State<AddEventPage> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime ?? TimeOfDay.now(),
     );
     if (picked != null) {
       setState(() => _selectedTime = picked);
     }
   }
 
-  void _showAddTicketTierDialog() {
-    final labelController = TextEditingController();
-    final priceController = TextEditingController();
-    final currencyController = TextEditingController(text: 'NPR');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Ticket Tier'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: labelController,
-              decoration: const InputDecoration(
-                labelText: 'Tier Label (e.g., Early Bird, VIP)',
-                hintText: 'Early Bird',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: priceController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Price',
-                hintText: '0',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: currencyController,
-              decoration: const InputDecoration(
-                labelText: 'Currency',
-                hintText: 'NPR',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (labelController.text.trim().isNotEmpty) {
-                setState(() {
-                  _ticketTiers.add({
-                    'label': labelController.text.trim(),
-                    'price': double.tryParse(priceController.text.trim()) ?? 0.0,
-                    'currency': currencyController.text.trim().isNotEmpty
-                        ? currencyController.text.trim()
-                        : 'NPR',
-                  });
-                });
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _pickImage() async {
     try {
-      // Request permission first
       final hasPermission = await PermissionHelper.requestImagePermission();
       if (!hasPermission) {
         if (mounted) {
@@ -200,19 +146,6 @@ class _AddEventPageState extends State<AddEventPage> {
       return;
     }
 
-    // Get current user
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.userModel;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please login to create events'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     // Combine date and time
     final eventDateTime = DateTime(
       _selectedDate!.year,
@@ -222,88 +155,44 @@ class _AddEventPageState extends State<AddEventPage> {
       _selectedTime!.minute,
     );
 
-    // Parse capacity
-    int capacity = 50;
-    try {
-      capacity = int.parse(_capacityController.text.trim());
-      if (capacity < 1) capacity = 50;
-    } catch (e) {
-      capacity = 50;
-    }
-
-    // Parse tags
-    List<String> tags = [];
-    if (_tagsController.text.trim().isNotEmpty) {
-      tags = _tagsController.text
-          .split(',')
-          .map((tag) => tag.trim())
-          .where((tag) => tag.isNotEmpty)
-          .toList();
-    }
-
     // Build event data
     final eventData = <String, dynamic>{
       'title': _titleController.text.trim(),
       'description': _descriptionController.text.trim(),
       'category': _selectedCategory!.name,
       'startsAt': eventDateTime.toIso8601String(),
-      'capacity': capacity,
-      'tags': tags,
-      'ticketTiers': _ticketTiers,
     };
 
     // Add location if address is provided
     if (_addressController.text.trim().isNotEmpty) {
       eventData['location'] = {
         'type': 'Point',
-        'coordinates': [0.0, 0.0], // TODO: Get actual coordinates from address
+        'coordinates': widget.event.location?.coordinates ?? [0.0, 0.0],
         'placeName': _addressController.text.trim(),
         'address': _addressController.text.trim(),
       };
     }
 
-    // Show loading indicator
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    // Create event
+    // Update event
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
-    final success = await eventProvider.createEvent(eventData, imageFile: _selectedImage);
-
-    // Close loading dialog
-    if (mounted) {
-      Navigator.of(context).pop(); // Close loading dialog
-    }
+    final success = await eventProvider.updateEvent(
+      widget.event.id,
+      eventData,
+      imageFile: _selectedImage,
+    );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Event created successfully!'),
+          content: Text('Event updated successfully!'),
           backgroundColor: Colors.green,
         ),
       );
-      // Clear form
-      _titleController.clear();
-      _descriptionController.clear();
-      _addressController.clear();
-      _selectedCategory = null;
-      _selectedDate = null;
-      _selectedTime = null;
-      _selectedImage = null;
-      _ticketTiers.clear();
-      setState(() {});
-      
-      // Navigate to home by finding MainShell and switching tab
-      MainShell.navigateToHome(context);
+      Navigator.of(context).pop();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(eventProvider.error ?? 'Failed to create event'),
+          content: Text(eventProvider.error ?? 'Failed to update event'),
           backgroundColor: Colors.red,
         ),
       );
@@ -314,40 +203,24 @@ class _AddEventPageState extends State<AddEventPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Edit Event'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Create Event',
-                    style: AppTextStyles.heading3,
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('All Events'),
-                  ),
-                ],
-              ),
-            ),
             Expanded(
               child: SingleChildScrollView(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _UploadPlaceholder(
                       onTap: _pickImage,
                       selectedImage: _selectedImage,
+                      existingImageUrl: widget.event.imageUrl,
                     ),
                     const SizedBox(height: 20),
                     TextField(
@@ -435,99 +308,6 @@ class _AddEventPageState extends State<AddEventPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _capacityController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        hintText: 'Capacity (number of attendees)',
-                        prefixIcon: Icon(Icons.people_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _tagsController,
-                      decoration: const InputDecoration(
-                        hintText: 'Tags (comma separated, e.g., music, concert, live)',
-                        prefixIcon: Icon(Icons.tag_rounded),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Ticket Tiers',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _showAddTicketTierDialog(),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: const Text('Add Tier'),
-                        ),
-                      ],
-                    ),
-                    if (_ticketTiers.isEmpty)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          'No ticket tiers added. Event will be free.',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      )
-                    else
-                      ..._ticketTiers.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final tier = entry.value;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      tier['label'] ?? 'Tier ${index + 1}',
-                                      style: AppTextStyles.body.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${tier['price'] ?? 0} ${tier['currency'] ?? 'NPR'}',
-                                      style: AppTextStyles.caption,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                onPressed: () {
-                                  setState(() {
-                                    _ticketTiers.removeAt(index);
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -549,7 +329,7 @@ class _AddEventPageState extends State<AddEventPage> {
                 borderRadius: BorderRadius.circular(28),
               ),
             ),
-            child: const Text('Publish Event'),
+            child: const Text('Update Event'),
           ),
         ),
       ),
@@ -560,10 +340,12 @@ class _AddEventPageState extends State<AddEventPage> {
 class _UploadPlaceholder extends StatelessWidget {
   final VoidCallback onTap;
   final File? selectedImage;
+  final String? existingImageUrl;
 
   const _UploadPlaceholder({
     required this.onTap,
     this.selectedImage,
+    this.existingImageUrl,
   });
 
   @override
@@ -592,20 +374,37 @@ class _UploadPlaceholder extends StatelessWidget {
                   height: 140,
                 ),
               )
-            : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.cloud_upload_rounded,
-                        size: 40, color: AppColors.textMuted),
-                    SizedBox(height: 8),
-                    Text(
-                      'Upload event image',
-                      style: TextStyle(color: AppColors.textMuted),
+            : existingImageUrl != null && existingImageUrl!.isNotEmpty
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.network(
+                      existingImageUrl!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 140,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildPlaceholder();
+                      },
                     ),
-                  ],
-                ),
-              ),
+                  )
+                : _buildPlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          Icon(Icons.cloud_upload_rounded,
+              size: 40, color: AppColors.textMuted),
+          SizedBox(height: 8),
+          Text(
+            'Upload event image',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+        ],
       ),
     );
   }

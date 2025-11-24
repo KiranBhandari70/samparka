@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/event_model.dart';
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
@@ -55,12 +58,36 @@ class EventRepository {
     }
   }
 
-  Future<EventModel> createEvent(Map<String, dynamic> eventData) async {
+  Future<EventModel> createEvent(Map<String, dynamic> eventData, {File? imageFile}) async {
     try {
-      final response = await _apiClient.post(
-        ApiEndpoints.createEvent,
-        body: eventData,
-      );
+      http.Response response;
+      
+      if (imageFile != null) {
+        // Use multipart request for file upload
+        final fields = <String, String>{};
+        eventData.forEach((key, value) {
+          if (value != null) {
+            if (value is Map || value is List) {
+              fields[key] = jsonEncode(value);
+            } else {
+              fields[key] = value.toString();
+            }
+          }
+        });
+        
+        response = await _apiClient.postMultipart(
+          ApiEndpoints.createEvent,
+          fields: fields,
+          file: imageFile,
+          fileFieldName: 'image',
+        );
+      } else {
+        // Use regular JSON request
+        response = await _apiClient.post(
+          ApiEndpoints.createEvent,
+          body: eventData,
+        );
+      }
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
@@ -75,12 +102,36 @@ class EventRepository {
     }
   }
 
-  Future<EventModel> updateEvent(String id, Map<String, dynamic> eventData) async {
+  Future<EventModel> updateEvent(String id, Map<String, dynamic> eventData, {File? imageFile}) async {
     try {
-      final response = await _apiClient.put(
-        ApiEndpoints.updateEvent(id),
-        body: eventData,
-      );
+      http.Response response;
+      
+      if (imageFile != null) {
+        // Use multipart request for file upload
+        final fields = <String, String>{};
+        eventData.forEach((key, value) {
+          if (value != null) {
+            if (value is Map || value is List) {
+              fields[key] = jsonEncode(value);
+            } else {
+              fields[key] = value.toString();
+            }
+          }
+        });
+        
+        response = await _apiClient.putMultipart(
+          ApiEndpoints.updateEvent(id),
+          fields: fields,
+          file: imageFile,
+          fileFieldName: 'image',
+        );
+      } else {
+        // Use regular JSON request
+        response = await _apiClient.put(
+          ApiEndpoints.updateEvent(id),
+          body: eventData,
+        );
+      }
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);

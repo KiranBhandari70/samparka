@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
@@ -6,6 +7,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../provider/event_provider.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
@@ -25,23 +27,38 @@ class _ExplorePageState extends State<ExplorePage> {
 
   // TODO: Replace these with backend fetched data
   final List<UserModel> _registeredUsers = [];
-  final List<EventModel> _allEvents = [];
 
-  List<EventModel> get _filteredEvents {
-    return _allEvents.where((event) {
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    await eventProvider.loadUpcomingEvents();
+  }
+
+  List<EventModel> _getFilteredEvents(EventProvider eventProvider) {
+    // If there's a search query, use filtered events from provider
+    if (_searchQuery.isNotEmpty) {
+      final searchResults = eventProvider.filteredEvents;
+      return searchResults.where((event) {
+        final matchesCategory = _selectedCategory == null
+            ? true
+            : event.categoryString?.toLowerCase() ==
+            _selectedCategory!.label.toLowerCase();
+        return matchesCategory;
+      }).toList();
+    }
+    
+    // Otherwise filter provider events
+    return eventProvider.upcomingEvents.where((event) {
       final matchesCategory = _selectedCategory == null
           ? true
           : event.categoryString?.toLowerCase() ==
           _selectedCategory!.label.toLowerCase();
-
-      final matchesSearch = _searchQuery.isEmpty
-          ? true
-          : event.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (event.description ?? '')
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
-
-      return matchesCategory && matchesSearch;
+      return matchesCategory;
     }).toList();
   }
 
@@ -70,6 +87,12 @@ class _ExplorePageState extends State<ExplorePage> {
               _SearchField(
                 onChanged: (value) {
                   setState(() => _searchQuery = value);
+                  if (value.isNotEmpty) {
+                    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+                    eventProvider.searchEvents(value);
+                  } else {
+                    _loadEvents();
+                  }
                 },
               ),
 
@@ -139,38 +162,75 @@ class _ExplorePageState extends State<ExplorePage> {
               Text('Nearby Events', style: AppTextStyles.heading3),
               const SizedBox(height: 16),
 
-              if (_filteredEvents.isEmpty)
-                Center(
-                  child: Text(
-                    'No events found',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                )
-              else
-                ..._filteredEvents.map(
+              Consumer<EventProvider>(
+                builder: (context, eventProvider, child) {
+                  if (eventProvider.isLoading && eventProvider.upcomingEvents.isEmpty && _searchQuery.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty && _searchQuery.isEmpty) {
+                    return Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Error loading events: ${eventProvider.error}',
+                            style: AppTextStyles.body.copyWith(
+                              color: Colors.red,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadEvents,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final filteredEvents = _getFilteredEvents(eventProvider);
+                  if (filteredEvents.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No events found',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: filteredEvents.map(
                       (event) => EventCard(
-                    event: event,
-                    onJoin: () {
-                      Navigator.of(context).pushNamed(
-                        TicketPurchasePage.routeName,
-                        arguments: {
-                          'event': event,
-                          'ticketPrice': event.ticketTiers.isNotEmpty
-                              ? event.ticketTiers.first.price
-                              : 0.0,
+                        event: event,
+                        onJoin: () {
+                          Navigator.of(context).pushNamed(
+                            TicketPurchasePage.routeName,
+                            arguments: {
+                              'event': event,
+                              'ticketPrice': event.ticketTiers.isNotEmpty
+                                  ? event.ticketTiers.first.price
+                                  : 0.0,
+                            },
+                          );
                         },
-                      );
-                    },
-                    onDetails: () {
-                      Navigator.of(context).pushNamed(
-                        EventDetailPage.routeName,
-                        arguments: EventDetailPage(event: event),
-                      );
-                    },
-                  ),
-                ),
+                        onDetails: () {
+                          Navigator.of(context).pushNamed(
+                            EventDetailPage.routeName,
+                            arguments: {'event': event},
+                          );
+                        },
+                      ),
+                    ).toList(),
+                  );
+                },
+              ),
 
               const SizedBox(height: 32),
             ],

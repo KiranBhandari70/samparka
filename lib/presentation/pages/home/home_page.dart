@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/category_model.dart';
 import '../../../data/models/event_model.dart';
+import '../../../provider/event_provider.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
@@ -20,11 +22,10 @@ class _HomePageState extends State<HomePage> {
 
   // REAL data must come from backend
   List<CategoryModel> _categories = [];
-  List<EventModel> _events = [];
 
-  List<EventModel> get _filteredEvents {
-    if (_selectedCategory == null) return _events;
-    return _events
+  List<EventModel> _filteredEvents(List<EventModel> events) {
+    if (_selectedCategory == null) return events;
+    return events
         .where((event) => event.category == _selectedCategory)
         .toList();
   }
@@ -43,9 +44,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadEvents() async {
-    // TODO: Replace with API call
-    // _events = await apiService.getEvents();
-    setState(() {});
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    await eventProvider.loadUpcomingEvents();
   }
 
   @override
@@ -85,31 +85,76 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                    final event = _filteredEvents[index];
-                    return EventCard(
-                      event: event,
-                      onDetails: () => Navigator.of(context).pushNamed(
-                        EventDetailPage.routeName,
-                        arguments: EventDetailPage(event: event),
+              Consumer<EventProvider>(
+                builder: (context, eventProvider, child) {
+                  if (eventProvider.isLoading && eventProvider.upcomingEvents.isEmpty) {
+                    return const SliverFillRemaining(
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+
+                  if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty) {
+                    return SliverFillRemaining(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Error loading events: ${eventProvider.error}',
+                              style: AppTextStyles.body.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadEvents,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
                       ),
-                      onJoin: () {
-                        Navigator.of(context).pushNamed(
-                          TicketPurchasePage.routeName,
-                          arguments: {
-                            'event': event,
-                            'ticketPrice': event.ticketTiers.isNotEmpty
-                                ? event.ticketTiers.first.price
-                                : 0.0,
+                    );
+                  }
+
+                  final events = _filteredEvents(eventProvider.upcomingEvents);
+                  if (events.isEmpty) {
+                    return const SliverFillRemaining(
+                      child: Center(
+                        child: Text(
+                          'No events found',
+                          style: AppTextStyles.body,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final event = events[index];
+                        return EventCard(
+                          event: event,
+                          onDetails: () => Navigator.of(context).pushNamed(
+                            EventDetailPage.routeName,
+                            arguments: {'event': event},
+                          ),
+                          onJoin: () {
+                            Navigator.of(context).pushNamed(
+                              TicketPurchasePage.routeName,
+                              arguments: {
+                                'event': event,
+                                'ticketPrice': event.ticketTiers.isNotEmpty
+                                    ? event.ticketTiers.first.price
+                                    : 0.0,
+                              },
+                            );
                           },
                         );
                       },
-                    );
-                  },
-                  childCount: _filteredEvents.length,
-                ),
+                      childCount: events.length,
+                    ),
+                  );
+                },
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],

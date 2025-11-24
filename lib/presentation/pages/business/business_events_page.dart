@@ -57,7 +57,7 @@ class BusinessEventsPage extends StatelessWidget {
                     onDetails: () {
                       Navigator.of(context).pushNamed(
                         EventDetailPage.routeName,
-                        arguments: EventDetailPage(event: event),
+                        arguments: {'event': event},
                       );
                     },
                     onJoin: () {},

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/environment.dart';
 import 'category_model.dart';
 import 'user_model.dart';
 
@@ -111,10 +112,21 @@ class EventModel {
   String get locationName => location?.placeName ?? '';
   int get attendeeCount => attendees.length;
 
-  String get imageUrlOrPlaceholder =>
-      (imageUrl != null && imageUrl!.isNotEmpty)
-          ? imageUrl!
-          : 'https://via.placeholder.com/400x250';
+  String get imageUrlOrPlaceholder {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      // If imageUrl starts with http, it's already a full URL
+      if (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://')) {
+        return imageUrl!;
+      }
+      // Otherwise, prepend the base URL
+      // Handle both cases: baseUrl with/without trailing slash and imageUrl with/without leading slash
+      final baseUrl = Environment.apiBaseUrl;
+      final imagePath = imageUrl!.startsWith('/') ? imageUrl! : '/$imageUrl';
+      final baseUrlClean = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+      return '$baseUrlClean$imagePath';
+    }
+    return 'https://via.placeholder.com/400x250';
+  }
 
   String? get categoryString => _categoryString;
 

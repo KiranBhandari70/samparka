@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../data/models/event_model.dart';
@@ -13,6 +14,7 @@ class EventProvider extends ChangeNotifier {
   List<EventModel> _featuredEvents = [];
   List<EventModel> _upcomingEvents = [];
   List<EventModel> _filteredEvents = [];
+  List<EventModel> _userEvents = [];
   EventModel? _selectedEvent;
 
   bool get isLoading => _isLoading;
@@ -20,6 +22,7 @@ class EventProvider extends ChangeNotifier {
   List<EventModel> get featuredEvents => _featuredEvents;
   List<EventModel> get upcomingEvents => _upcomingEvents;
   List<EventModel> get filteredEvents => _filteredEvents;
+  List<EventModel> get userEvents => _userEvents;
   EventModel? get selectedEvent => _selectedEvent;
 
   Future<void> loadFeaturedEvents() async {
@@ -162,5 +165,91 @@ class EventProvider extends ChangeNotifier {
   void clearError() {
     _clearError();
     notifyListeners();
+  }
+
+  Future<bool> createEvent(Map<String, dynamic> eventData, {File? imageFile}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _eventService.createEvent(eventData, imageFile: imageFile);
+      // Reload events after creation
+      await loadFeaturedEvents();
+      await loadUpcomingEvents();
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateEvent(String id, Map<String, dynamic> eventData, {File? imageFile}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _eventService.updateEvent(id, eventData, imageFile: imageFile);
+      // Reload events after update
+      await loadFeaturedEvents();
+      await loadUpcomingEvents();
+      // Reload user events if we have any
+      if (_userEvents.isNotEmpty) {
+        await loadUserEvents(_userEvents.first.createdBy);
+      }
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteEvent(String id) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      await _eventService.deleteEvent(id);
+      // Remove from local lists
+      _featuredEvents.removeWhere((e) => e.id == id);
+      _upcomingEvents.removeWhere((e) => e.id == id);
+      _filteredEvents.removeWhere((e) => e.id == id);
+      _userEvents.removeWhere((e) => e.id == id);
+      // Reload events to ensure UI is updated
+      await loadFeaturedEvents();
+      await loadUpcomingEvents();
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> loadUserEvents(String userId) async {
+    if (userId.isEmpty) return;
+    
+    _setLoading(true);
+    _clearError();
+
+    try {
+      _userEvents = await _eventService.getUserEvents(userId);
+      _setLoading(false);
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+    }
   }
 }

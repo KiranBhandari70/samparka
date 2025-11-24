@@ -16,6 +16,13 @@ class MainShell extends StatefulWidget {
   });
 
   static const String routeName = '/home';
+  
+  static void navigateToHome(BuildContext? context) {
+    if (context != null) {
+      final state = context.findAncestorStateOfType<_MainShellState>();
+      state?.switchToTab(0);
+    }
+  }
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -40,6 +47,10 @@ class _MainShellState extends State<MainShell> {
       ProfilePage(user: widget.user),
     ];
 
+  }
+
+  void switchToTab(int index) {
+    setState(() => _currentIndex = index);
   }
 
   void _onItemTapped(int index) {

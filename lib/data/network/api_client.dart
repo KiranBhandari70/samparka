@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../config/environment.dart';
@@ -118,6 +119,130 @@ class ApiClient {
       headers: requestHeaders,
     );
 
+    return response;
+  }
+
+  Future<http.Response> postMultipart(
+    String endpoint, {
+    Map<String, String>? fields,
+    File? file,
+    String fileFieldName = 'image',
+  }) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final request = http.MultipartRequest('POST', uri);
+
+    // Add authorization header
+    final token = await _storageService.getToken();
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // Add fields
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+
+    // Add file if provided
+    if (file != null && await file.exists()) {
+      final fileStream = http.ByteStream(file.openRead());
+      final fileLength = await file.length();
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      
+      // Determine content type from file extension
+      String contentType;
+      final ext = fileName.toLowerCase().split('.').last;
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        default:
+          contentType = 'image/jpeg'; // Default fallback
+      }
+      
+      final multipartFile = http.MultipartFile(
+        fileFieldName,
+        fileStream,
+        fileLength,
+        filename: fileName,
+        contentType: http.MediaType.parse(contentType),
+      );
+      request.files.add(multipartFile);
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    return response;
+  }
+
+  Future<http.Response> putMultipart(
+    String endpoint, {
+    Map<String, String>? fields,
+    File? file,
+    String fileFieldName = 'image',
+  }) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final request = http.MultipartRequest('PUT', uri);
+
+    // Add authorization header
+    final token = await _storageService.getToken();
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // Add fields
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+
+    // Add file if provided
+    if (file != null && await file.exists()) {
+      final fileStream = http.ByteStream(file.openRead());
+      final fileLength = await file.length();
+      final fileName = file.path.split(Platform.pathSeparator).last;
+      
+      // Determine content type from file extension
+      String contentType;
+      final ext = fileName.toLowerCase().split('.').last;
+      switch (ext) {
+        case 'jpg':
+        case 'jpeg':
+          contentType = 'image/jpeg';
+          break;
+        case 'png':
+          contentType = 'image/png';
+          break;
+        case 'gif':
+          contentType = 'image/gif';
+          break;
+        case 'webp':
+          contentType = 'image/webp';
+          break;
+        default:
+          contentType = 'image/jpeg'; // Default fallback
+      }
+      
+      final multipartFile = http.MultipartFile(
+        fileFieldName,
+        fileStream,
+        fileLength,
+        filename: fileName,
+        contentType: http.MediaType.parse(contentType),
+      );
+      request.files.add(multipartFile);
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
     return response;
   }
 

@@ -1,4 +1,10 @@
 import Event from '../models/Event.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    Get all events
 // @route   GET /api/v1/events
@@ -75,9 +81,70 @@ export const createEvent = async (req, res, next) => {
       createdBy: req.user._id,
     };
 
-    // Handle image upload
+    // Handle image upload - prioritize file over form field
     if (req.file) {
-      eventData.imageUrl = `/uploads/${req.file.filename}`;
+      const uploadsDir = path.join(__dirname, '..', 'uploads');
+      const filePath = path.join(uploadsDir, req.file.filename);
+      
+      // Verify file was actually saved
+      if (fs.existsSync(filePath)) {
+        eventData.imageUrl = `/uploads/${req.file.filename}`;
+        console.log('Image uploaded and saved:', eventData.imageUrl);
+      } else {
+        console.error('File was not saved to disk:', req.file.filename);
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to save image file' 
+        });
+      }
+    } else if (eventData.imageUrl && eventData.imageUrl.trim() !== '') {
+      // Keep existing imageUrl from form if no new file
+      console.log('Using existing imageUrl from form:', eventData.imageUrl);
+    } else {
+      console.log('No image file in request');
+      // Remove empty imageUrl
+      delete eventData.imageUrl;
+    }
+
+    // Parse JSON strings from multipart form data
+    if (eventData.location && typeof eventData.location === 'string') {
+      try {
+        eventData.location = JSON.parse(eventData.location);
+      } catch (e) {
+        // If parsing fails, keep as is
+      }
+    }
+
+    if (eventData.tags && typeof eventData.tags === 'string') {
+      try {
+        eventData.tags = JSON.parse(eventData.tags);
+      } catch (e) {
+        // If parsing fails, try splitting by comma
+        eventData.tags = eventData.tags.split(',').map(t => t.trim()).filter(t => t);
+      }
+    }
+
+    if (eventData.ticketTiers && typeof eventData.ticketTiers === 'string') {
+      try {
+        eventData.ticketTiers = JSON.parse(eventData.ticketTiers);
+      } catch (e) {
+        // If parsing fails, set to empty array
+        eventData.ticketTiers = [];
+      }
+    }
+
+    // Parse numeric fields
+    if (eventData.capacity) {
+      eventData.capacity = parseInt(eventData.capacity, 10);
+    }
+
+    if (eventData.rewardBoost) {
+      eventData.rewardBoost = parseFloat(eventData.rewardBoost);
+    }
+
+    // Parse boolean fields
+    if (eventData.isSponsored !== undefined) {
+      eventData.isSponsored = eventData.isSponsored === 'true' || eventData.isSponsored === true;
     }
 
     const event = new Event(eventData);
@@ -110,9 +177,70 @@ export const updateEvent = async (req, res, next) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
-    // Handle image upload
+    // Handle image upload - prioritize file over form field
     if (req.file) {
-      req.body.imageUrl = `/uploads/${req.file.filename}`;
+      const uploadsDir = path.join(__dirname, '..', 'uploads');
+      const filePath = path.join(uploadsDir, req.file.filename);
+      
+      // Verify file was actually saved
+      if (fs.existsSync(filePath)) {
+        req.body.imageUrl = `/uploads/${req.file.filename}`;
+        console.log('Image uploaded and saved for update:', req.body.imageUrl);
+      } else {
+        console.error('File was not saved to disk:', req.file.filename);
+        return res.status(500).json({ 
+          success: false,
+          message: 'Failed to save image file' 
+        });
+      }
+    } else if (req.body.imageUrl && req.body.imageUrl.trim() !== '' && req.body.imageUrl !== 'null') {
+      // Keep existing imageUrl from form if no new file
+      console.log('Keeping existing imageUrl from form:', req.body.imageUrl);
+    } else {
+      // Don't overwrite existing imageUrl with empty string
+      console.log('No new image, keeping existing imageUrl');
+      delete req.body.imageUrl;
+    }
+
+    // Parse JSON strings from multipart form data
+    if (req.body.location && typeof req.body.location === 'string') {
+      try {
+        req.body.location = JSON.parse(req.body.location);
+      } catch (e) {
+        // If parsing fails, keep as is
+      }
+    }
+
+    if (req.body.tags && typeof req.body.tags === 'string') {
+      try {
+        req.body.tags = JSON.parse(req.body.tags);
+      } catch (e) {
+        // If parsing fails, try splitting by comma
+        req.body.tags = req.body.tags.split(',').map(t => t.trim()).filter(t => t);
+      }
+    }
+
+    if (req.body.ticketTiers && typeof req.body.ticketTiers === 'string') {
+      try {
+        req.body.ticketTiers = JSON.parse(req.body.ticketTiers);
+      } catch (e) {
+        // If parsing fails, set to empty array
+        req.body.ticketTiers = [];
+      }
+    }
+
+    // Parse numeric fields
+    if (req.body.capacity) {
+      req.body.capacity = parseInt(req.body.capacity, 10);
+    }
+
+    if (req.body.rewardBoost) {
+      req.body.rewardBoost = parseFloat(req.body.rewardBoost);
+    }
+
+    // Parse boolean fields
+    if (req.body.isSponsored !== undefined) {
+      req.body.isSponsored = req.body.isSponsored === 'true' || req.body.isSponsored === true;
     }
 
     event = await Event.findByIdAndUpdate(

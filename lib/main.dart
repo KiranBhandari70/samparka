@@ -9,6 +9,7 @@ import 'data/models/event_model.dart';
 import 'data/models/group_model.dart';
 import 'data/models/user_model.dart';
 import 'provider/auth_provider.dart';
+import 'provider/event_provider.dart';
 
 import 'presentation/navigation/main_shell.dart';
 import 'presentation/pages/auth/auth_page.dart';
@@ -21,6 +22,7 @@ import 'presentation/pages/groups/group_detail_page.dart';
 import 'presentation/pages/groups/groups_list_page.dart';
 import 'presentation/pages/groups/create_group_page.dart';
 import 'presentation/pages/profile/edit_profile_page.dart';
+import 'presentation/pages/edit_event/edit_event_page.dart';
 import 'presentation/pages/events/ticket_purchase_page.dart';
 import 'presentation/pages/rewards/rewards_dashboard_page.dart';
 import 'presentation/pages/rewards/partner_businesses_page.dart';
@@ -57,8 +59,11 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => EventProvider()),
+      ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
@@ -101,6 +106,12 @@ class _SamparkaAppState extends State<SamparkaApp> {
             final args = settings.arguments as Map<String, dynamic>?;
             final user = args?['user'] as UserModel?;
             return MaterialPageRoute(builder: (_) => EditProfilePage(user: user));
+
+          case EditEventPage.routeName:
+            final args = settings.arguments as Map<String, dynamic>?;
+            final event = args?['event'] as EventModel?;
+            if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+            return MaterialPageRoute(builder: (_) => EditEventPage(event: event));
 
           case TicketPurchasePage.routeName:
             final args = settings.arguments as Map<String, dynamic>?;

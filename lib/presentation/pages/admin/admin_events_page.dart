@@ -141,7 +141,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                             onDetails: () {
                               Navigator.of(context).pushNamed(
                                 EventDetailPage.routeName,
-                                arguments: EventDetailPage(event: event),
+                                arguments: {'event': event},
                               );
                             },
                             onJoin: () {
