@@ -12,13 +12,14 @@ import {
   sendGroupMessage,
 } from '../controllers/groupController.js';
 import { authenticate } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
 
 router.get('/', getGroups);
 router.get('/:id', getGroup);
-router.post('/', authenticate, createGroup);
-router.put('/:id', authenticate, updateGroup);
+router.post('/', authenticate, upload.single('image'), createGroup);
+router.put('/:id', authenticate, upload.single('image'), updateGroup);
 router.delete('/:id', authenticate, deleteGroup);
 router.post('/:id/join', authenticate, joinGroup);
 router.post('/:id/leave', authenticate, leaveGroup);

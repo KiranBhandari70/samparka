@@ -3,7 +3,7 @@ import '../../core/constants/colors.dart';
 import '../../data/models/user_model.dart';
 import '../pages/add_event/add_event_page.dart';
 import '../pages/explore/explore_page.dart';
-import '../pages/groups/group_page.dart';
+import '../pages/groups/groups_list_page.dart';
 import '../pages/home/home_page.dart';
 import '../pages/profile/profile_page.dart';
 
@@ -16,7 +16,7 @@ class MainShell extends StatefulWidget {
   });
 
   static const String routeName = '/home';
-  
+
   static void navigateToHome(BuildContext? context) {
     if (context != null) {
       final state = context.findAncestorStateOfType<_MainShellState>();
@@ -41,12 +41,9 @@ class _MainShellState extends State<MainShell> {
       const HomePage(),
       const ExplorePage(),
       const AddEventPage(),
-      GroupPage(
-        groups: [], // <-- pass real groups here
-      ),
+      const GroupsListPage(), // <-- updated to use GroupsListPage
       ProfilePage(user: widget.user),
     ];
-
   }
 
   void switchToTab(int index) {

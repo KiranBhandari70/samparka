@@ -23,49 +23,87 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  UserModel? _currentUser;
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
       _loadUserEvents();
     });
   }
 
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.refreshUser();
+      if (mounted) {
+        setState(() {
+          _currentUser = authProvider.userModel ?? widget.user;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _currentUser = widget.user;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   void _loadUserEvents() {
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
-    eventProvider.loadUserEvents(widget.user.id);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.userModel?.id ?? widget.user.id;
+    eventProvider.loadUserEvents(userId);
   }
+
+  UserModel get displayUser => _currentUser ?? widget.user;
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          children: [
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  AppStrings.profileHeading,
-                  style: AppTextStyles.heading2,
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.settings_rounded),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsPage(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildProfileCard(context),
+        child: RefreshIndicator(
+          onRefresh: _loadUserData,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            children: [
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(
+                    AppStrings.profileHeading,
+                    style: AppTextStyles.heading2,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.settings_rounded),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildProfileCard(context),
             const SizedBox(height: 24),
             _buildStatsCard(),
             const SizedBox(height: 24),
@@ -111,6 +149,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -136,31 +175,31 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           CircleAvatar(
             radius: 48,
-            backgroundImage: (widget.user.avatarUrl?.isNotEmpty ?? false)
-                ? NetworkImage(widget.user.avatarUrl!)
+            backgroundImage: (displayUser.avatarUrl?.isNotEmpty ?? false)
+                ? NetworkImage(displayUser.avatarUrl!)
                 : null,
-            child: (widget.user.avatarUrl == null || widget.user.avatarUrl!.isEmpty)
+            child: (displayUser.avatarUrl == null || displayUser.avatarUrl!.isEmpty)
                 ? const Icon(Icons.person, size: 48, color: Colors.white)
                 : null,
           ),
           const SizedBox(height: 16),
           Text(
-            widget.user.name,
+            displayUser.name,
             style: AppTextStyles.heading2.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
-            widget.user.email,
+            displayUser.email,
             style: AppTextStyles.body.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 4),
           Text(
-            widget.user.locationLabel ?? 'No location',
+            displayUser.locationLabel ?? 'No location',
             style: AppTextStyles.caption.copyWith(color: Colors.white70),
           ),
           const SizedBox(height: 16),
           Text(
-            widget.user.bio ?? 'No bio available',
+            displayUser.bio ?? 'No bio available',
             textAlign: TextAlign.center,
             style: AppTextStyles.body.copyWith(color: Colors.white),
           ),
@@ -168,8 +207,12 @@ class _ProfilePageState extends State<ProfilePage> {
           SizedBox(
             width: 160,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed('/edit-profile');
+              onPressed: () async {
+                final result = await Navigator.of(context).pushNamed('/edit-profile');
+                if (result == true) {
+                  // Refresh user data after editing
+                  _loadUserData();
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -187,27 +230,50 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildStatsCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: const [
-          _ProfileStat(label: 'Events', value: '24'),
-          _ProfileStat(label: 'Hosted', value: '3'),
-          _ProfileStat(label: 'Badges', value: '3'),
-          _ProfileStat(label: 'Followers', value: '156'),
-        ],
-      ),
+    return Consumer<EventProvider>(
+      builder: (context, eventProvider, child) {
+        final userEvents = eventProvider.userEvents;
+        final hostedCount = userEvents.length;
+        // Calculate attended events (events where user is in attendees)
+        // For now, we'll use hosted events count as a placeholder
+        // In the future, you can add an API endpoint to get attended events
+        
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ProfileStat(
+                label: 'Hosted',
+                value: '$hostedCount',
+              ),
+              _ProfileStat(
+                label: 'Points',
+                value: '${displayUser.rewardBalance.toInt()}',
+              ),
+              _ProfileStat(
+                label: 'Interests',
+                value: '${displayUser.interests.length}',
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildInterests() {
-    final interests = widget.user.interests ?? [];
-    if (interests.isEmpty) return const Text('No interests added');
+    final interests = displayUser.interests ?? [];
+    if (interests.isEmpty) {
+      return Text(
+        'No interests added yet. Add interests in your profile settings.',
+        style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+      );
+    }
     return Wrap(
       spacing: 12,
       runSpacing: 12,

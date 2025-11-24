@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
@@ -6,13 +10,8 @@ import '../../widgets/primary_button.dart';
 
 class TicketPurchasePage extends StatefulWidget {
   final EventModel event;
-  final double ticketPrice;
 
-  const TicketPurchasePage({
-    super.key,
-    required this.event,
-    this.ticketPrice = 25.00,
-  });
+  const TicketPurchasePage({super.key, required this.event});
 
   static const String routeName = '/ticket-purchase';
 
@@ -22,42 +21,37 @@ class TicketPurchasePage extends StatefulWidget {
 
 class _TicketPurchasePageState extends State<TicketPurchasePage> {
   int _ticketCount = 1;
-  String _selectedPaymentMethod = 'card';
-  final _cardNumberController = TextEditingController();
-  final _cardNameController = TextEditingController();
-  final _expiryController = TextEditingController();
-  final _cvvController = TextEditingController();
+  late TicketTier _selectedTier;
 
   @override
-  void dispose() {
-    _cardNumberController.dispose();
-    _cardNameController.dispose();
-    _expiryController.dispose();
-    _cvvController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    // Default to first ticket tier
+    _selectedTier = widget.event.ticketTiers.isNotEmpty
+        ? widget.event.ticketTiers[0]
+        : const TicketTier(label: "Standard", price: 0.0);
   }
 
-  double get _totalPrice => widget.ticketPrice * _ticketCount;
-  double get _rewardPointsEarned => _totalPrice * 10; // 10 points per dollar
+  double get _totalPrice => _selectedTier.price * _ticketCount;
 
-  void _processPayment() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Payment successful! You earned ${_rewardPointsEarned.toInt()} reward points.'),
-        backgroundColor: AppColors.accentGreen,
+  void _payWithESewa() {
+    final amount = _totalPrice.toStringAsFixed(2);
+    final esewaUrl =
+        "https://uat.esewa.com.np/epay/main?amt=$amount&pid=${widget.event.id}&scd=EPAYTEST&su=https://your-success-url.com&fu=https://your-failure-url.com";
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ESewaWebViewPage(paymentUrl: esewaUrl),
       ),
     );
-    Navigator.of(context).pop();
-    Navigator.of(context).pop(); // Go back to event detail
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Purchase Tickets'),
-      ),
+      appBar: AppBar(title: const Text("Purchase Tickets")),
       body: SafeArea(
         child: Column(
           children: [
@@ -69,163 +63,48 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                   children: [
                     _EventSummaryCard(event: widget.event),
                     const SizedBox(height: 24),
-                    Text(
-                      'Ticket Quantity',
-                      style: AppTextStyles.heading3,
-                    ),
+                    Text("Select Ticket Tier", style: AppTextStyles.heading3),
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Number of Tickets',
-                            style: AppTextStyles.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                    DropdownButton<TicketTier>(
+                      value: _selectedTier,
+                      isExpanded: true,
+                      items: widget.event.ticketTiers.map((tier) {
+                        return DropdownMenuItem(
+                          value: tier,
+                          child: Text(
+                            "${tier.label} - ${tier.price.toStringAsFixed(2)} ${tier.currency}",
                           ),
-                          const Spacer(),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline),
-                                onPressed: _ticketCount > 1
-                                    ? () => setState(() => _ticketCount--)
-                                    : null,
-                                color: AppColors.primary,
-                              ),
-                              Text(
-                                '$_ticketCount',
-                                style: AppTextStyles.heading3,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline),
-                                onPressed: () => setState(() => _ticketCount++),
-                                color: AppColors.primary,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        );
+                      }).toList(),
+                      onChanged: (tier) {
+                        setState(() => _selectedTier = tier!);
+                      },
                     ),
                     const SizedBox(height: 24),
-                    Text(
-                      'Payment Method',
-                      style: AppTextStyles.heading3,
-                    ),
+                    Text("Ticket Quantity", style: AppTextStyles.heading3),
                     const SizedBox(height: 16),
-                    _PaymentMethodOption(
-                      value: 'card',
-                      label: 'Credit/Debit Card',
-                      icon: Icons.credit_card,
-                      isSelected: _selectedPaymentMethod == 'card',
-                      onTap: () => setState(() => _selectedPaymentMethod = 'card'),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          onPressed: _ticketCount > 1
+                              ? () => setState(() => _ticketCount--)
+                              : null,
+                          color: AppColors.primary,
+                        ),
+                        Text("$_ticketCount", style: AppTextStyles.heading3),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline),
+                          onPressed: () => setState(() => _ticketCount++),
+                          color: AppColors.primary,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _PaymentMethodOption(
-                      value: 'wallet',
-                      label: 'Reward Points',
-                      icon: Icons.account_balance_wallet,
-                      isSelected: _selectedPaymentMethod == 'wallet',
-                      onTap: () => setState(() => _selectedPaymentMethod = 'wallet'),
-                    ),
-                    if (_selectedPaymentMethod == 'card') ...[
-                      const SizedBox(height: 24),
-                      TextFormField(
-                        controller: _cardNumberController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Card Number',
-                          hintText: '1234 5678 9012 3456',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _cardNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cardholder Name',
-                          hintText: 'John Doe',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _expiryController,
-                              decoration: const InputDecoration(
-                                labelText: 'Expiry Date',
-                                hintText: 'MM/YY',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _cvvController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'CVV',
-                                hintText: '123',
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (_selectedPaymentMethod == 'wallet') ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Available Points',
-                                  style: AppTextStyles.body,
-                                ),
-                                Text(
-                                  '2,450',
-                                  style: AppTextStyles.heading3.copyWith(
-                                    color: AppColors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Points Required',
-                                  style: AppTextStyles.body,
-                                ),
-                                Text(
-                                  '${(_totalPrice * 100).toInt()}',
-                                  style: AppTextStyles.heading3,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 24),
                     _PriceBreakdown(
-                      ticketPrice: widget.ticketPrice,
+                      ticketPrice: _selectedTier.price,
                       ticketCount: _ticketCount,
                       totalPrice: _totalPrice,
-                      rewardPointsEarned: _rewardPointsEarned,
                     ),
                   ],
                 ),
@@ -243,30 +122,9 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                   ),
                 ],
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total',
-                        style: AppTextStyles.heading3,
-                      ),
-                      Text(
-                        '\$${_totalPrice.toStringAsFixed(2)}',
-                        style: AppTextStyles.heading2.copyWith(
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  PrimaryButton(
-                    label: 'Complete Purchase',
-                    onPressed: _processPayment,
-                  ),
-                ],
+              child: PrimaryButton(
+                label: "Pay with eSewa",
+                onPressed: _payWithESewa,
               ),
             ),
           ],
@@ -276,6 +134,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   }
 }
 
+// ---------------------- Event Summary Card ----------------------
 class _EventSummaryCard extends StatelessWidget {
   final EventModel event;
 
@@ -289,11 +148,7 @@ class _EventSummaryCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
+          BoxShadow(color: AppColors.shadow, blurRadius: 18),
         ],
       ),
       child: Column(
@@ -309,31 +164,23 @@ class _EventSummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            event.title,
-            style: AppTextStyles.heading3,
-          ),
+          Text(event.title, style: AppTextStyles.heading3),
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.calendar_month, size: 16, color: AppColors.textMuted),
+              const Icon(Icons.calendar_month, size: 16, color: AppColors.textMuted),
               const SizedBox(width: 8),
-              Text(
-                '${_formatDate(event.dateTime)} • ${event.timeLabel}',
-                style: AppTextStyles.caption,
-              ),
+              Text("${_formatDate(event.dateTime)} • ${event.timeLabel}",
+                  style: AppTextStyles.caption),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.place, size: 16, color: AppColors.textMuted),
+              const Icon(Icons.place, size: 16, color: AppColors.textMuted),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  event.locationName,
-                  style: AppTextStyles.caption,
-                ),
+                child: Text(event.locationName, style: AppTextStyles.caption),
               ),
             ],
           ),
@@ -343,71 +190,23 @@ class _EventSummaryCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    final months = [
+      'Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+    return "${months[date.month-1]} ${date.day}, ${date.year}";
   }
 }
 
-class _PaymentMethodOption extends StatelessWidget {
-  final String value;
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _PaymentMethodOption({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textMuted),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: AppTextStyles.body.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const Spacer(),
-            if (isSelected)
-              Icon(Icons.check_circle, color: AppColors.primary),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+// ---------------------- Price Breakdown ----------------------
 class _PriceBreakdown extends StatelessWidget {
   final double ticketPrice;
   final int ticketCount;
   final double totalPrice;
-  final double rewardPointsEarned;
 
   const _PriceBreakdown({
     required this.ticketPrice,
     required this.ticketCount,
     required this.totalPrice,
-    required this.rewardPointsEarned,
   });
 
   @override
@@ -419,77 +218,35 @@ class _PriceBreakdown extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Price Breakdown',
-            style: AppTextStyles.heading3,
-          ),
-          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Ticket Price',
-                style: AppTextStyles.body,
-              ),
-              Text(
-                '\$${ticketPrice.toStringAsFixed(2)}',
-                style: AppTextStyles.body,
-              ),
+              const Text("Ticket Price"),
+              Text("\$${ticketPrice.toStringAsFixed(2)}"),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Quantity',
-                style: AppTextStyles.body,
-              ),
-              Text(
-                'x$ticketCount',
-                style: AppTextStyles.body,
-              ),
+              const Text("Quantity"),
+              Text("x$ticketCount"),
             ],
           ),
           const Divider(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const Text("Total", style: TextStyle(fontWeight: FontWeight.bold)),
               Text(
-                'Total',
-                style: AppTextStyles.heading3,
-              ),
-              Text(
-                '\$${totalPrice.toStringAsFixed(2)}',
-                style: AppTextStyles.heading3.copyWith(
+                "\$${totalPrice.toStringAsFixed(2)}",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.accentYellow.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.stars, color: AppColors.accentYellow, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'You will earn ${rewardPointsEarned.toInt()} reward points',
-                    style: AppTextStyles.body.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -497,3 +254,48 @@ class _PriceBreakdown extends StatelessWidget {
   }
 }
 
+// ---------------------- eSewa WebView ----------------------
+class ESewaWebViewPage extends StatefulWidget {
+  final String paymentUrl;
+
+  const ESewaWebViewPage({super.key, required this.paymentUrl});
+
+  @override
+  State<ESewaWebViewPage> createState() => _ESewaWebViewPageState();
+}
+
+class _ESewaWebViewPageState extends State<ESewaWebViewPage> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (nav) {
+            if (nav.url.contains("success")) {
+              Navigator.pop(context); // Payment success
+            } else if (nav.url.contains("failure")) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Payment failed")),
+              );
+              Navigator.pop(context);
+            }
+            return NavigationDecision.navigate;
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse(widget.paymentUrl));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("eSewa Payment")),
+      body: WebViewWidget(controller: _controller),
+    );
+  }
+}

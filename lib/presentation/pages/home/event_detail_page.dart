@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../provider/event_provider.dart';
 import '../events/ticket_purchase_page.dart';
 
-class EventDetailPage extends StatelessWidget {
+class EventDetailPage extends StatefulWidget {
   final EventModel event;
 
   const EventDetailPage({super.key, required this.event});
@@ -13,7 +15,49 @@ class EventDetailPage extends StatelessWidget {
   static const String routeName = '/event-detail';
 
   @override
+  State<EventDetailPage> createState() => _EventDetailPageState();
+}
+
+class _EventDetailPageState extends State<EventDetailPage> {
+  EventModel? _fullEvent;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFullEvent();
+  }
+
+  Future<void> _loadFullEvent() async {
+    try {
+      final eventProvider = Provider.of<EventProvider>(context, listen: false);
+      final fullEvent = await eventProvider.getEventById(widget.event.id);
+      if (mounted) {
+        setState(() {
+          _fullEvent = fullEvent;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  EventModel get event => _fullEvent ?? widget.event;
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final UserModel? host = event.host;
 
     return Scaffold(
@@ -50,7 +94,6 @@ class EventDetailPage extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -73,8 +116,45 @@ class EventDetailPage extends StatelessWidget {
                           // Location
                           _InfoRow(
                             icon: Icons.place_rounded,
-                            label: event.locationName,
+                            label: event.locationName.isNotEmpty
+                                ? event.locationName
+                                : 'Location TBA',
                           ),
+
+                          const SizedBox(height: 12),
+
+                          // Capacity
+                          _InfoRow(
+                            icon: Icons.people_alt_rounded,
+                            label: '${event.attendeeCount}/${event.capacity} attendees',
+                          ),
+
+                          if (event.tags.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: event.tags
+                                  .map(
+                                    (tag) => Chip(
+                                  label: Text(tag),
+                                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                                  labelStyle: AppTextStyles.caption.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              )
+                                  .toList(),
+                            ),
+                          ],
+
+                          if (event.rewardBoost > 0) ...[
+                            const SizedBox(height: 12),
+                            _InfoRow(
+                              icon: Icons.stars_rounded,
+                              label: '${event.rewardBoost}% Reward Boost',
+                            ),
+                          ],
 
                           const SizedBox(height: 24),
 
@@ -102,6 +182,64 @@ class EventDetailPage extends StatelessWidget {
 
                           const SizedBox(height: 32),
 
+                          // Attendees Section
+                          if (event.attendeeCount > 0) ...[
+                            Text('Attendees', style: AppTextStyles.heading3),
+                            const SizedBox(height: 12),
+                            Text(
+                              '${event.attendeeCount} people are attending this event',
+                              style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
+                          // Ticket Tiers
+                          if (event.ticketTiers.isNotEmpty) ...[
+                            Text('Ticket Options', style: AppTextStyles.heading3),
+                            const SizedBox(height: 12),
+                            ...event.ticketTiers.map(
+                                  (tier) => Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          tier.label,
+                                          style: AppTextStyles.body.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        if (tier.rewardPoints != null && tier.rewardPoints! > 0)
+                                          Text(
+                                            '${tier.rewardPoints} reward points',
+                                            style: AppTextStyles.caption.copyWith(
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    Text(
+                                      '${tier.price} ${tier.currency}',
+                                      style: AppTextStyles.heading3.copyWith(
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+
                           // Comments Header
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -115,7 +253,7 @@ class EventDetailPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
 
-                          // REAL comments (no dummy)
+                          // Comments Section
                           CommentsSection(eventId: event.id),
                           const SizedBox(height: 32),
                         ],
@@ -126,35 +264,21 @@ class EventDetailPage extends StatelessWidget {
               ),
             ),
 
-            // Bottom buttons
+            // Bottom button (Buy Tickets only)
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          TicketPurchasePage.routeName,
-                          arguments: {'event': event},
-                        );
-                      },
-                      child: const Text('Buy Tickets'),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        // Implement your join event API here
-                      },
-                      child: const Text('Join Event (Free)'),
-                    ),
-                  ),
-                ],
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      TicketPurchasePage.routeName,
+                      arguments: {'event': event},
+                    );
+                  },
+                  child: const Text('Buy Tickets'),
+                ),
               ),
             ),
           ],
@@ -284,7 +408,6 @@ class _MapSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // Replace with Google Maps widget in real app
             Container(
               color: AppColors.border,
               child: Center(
@@ -295,7 +418,6 @@ class _MapSection extends StatelessWidget {
                 ),
               ),
             ),
-
             Positioned(
               bottom: 16,
               right: 16,
@@ -324,7 +446,6 @@ class CommentsSection extends StatefulWidget {
 class _CommentsSectionState extends State<CommentsSection> {
   final TextEditingController _controller = TextEditingController();
 
-  /// MUST come from your backend
   List<CommentModel> comments = [];
 
   @override
@@ -334,10 +455,8 @@ class _CommentsSectionState extends State<CommentsSection> {
   }
 
   Future<void> _loadComments() async {
-    // TODO: Replace with API call
-    // final response = await eventService.getComments(widget.eventId);
     setState(() {
-      comments = []; // real comments
+      comments = [];
     });
   }
 
@@ -356,15 +475,12 @@ class _CommentsSectionState extends State<CommentsSection> {
       comments.insert(0, newComment);
       _controller.clear();
     });
-
-    // TODO: Send comment to backend
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Input
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -391,8 +507,6 @@ class _CommentsSectionState extends State<CommentsSection> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // List
         if (comments.isEmpty)
           Text("No comments yet.",
               style: AppTextStyles.body.copyWith(color: AppColors.textMuted))

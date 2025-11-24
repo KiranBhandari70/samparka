@@ -167,6 +167,14 @@ class EventProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<EventModel> getEventById(String id) async {
+    try {
+      return await _eventService.getEventDetails(id);
+    } catch (e) {
+      throw Exception('Error fetching event: $e');
+    }
+  }
+
   Future<bool> createEvent(Map<String, dynamic> eventData, {File? imageFile}) async {
     _setLoading(true);
     _clearError();

@@ -8,6 +8,7 @@ import '../../../core/utils/validators.dart';
 import '../../../provider/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../auth/auth_page.dart';
+import '../auth/interests_selection_page.dart';
 import '../../navigation/main_shell.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -45,9 +46,10 @@ class _SignUpPageState extends State<SignUpPage> {
     if (!mounted) return;
 
     if (success && authProvider.userModel != null) {
+      // Always navigate to interests page after registration for new users
+      // New users won't have interests set yet
       Navigator.of(context).pushReplacementNamed(
-        MainShell.routeName,
-        arguments: {'user': authProvider.userModel},
+        InterestsSelectionPage.routeName,
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

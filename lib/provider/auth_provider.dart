@@ -82,6 +82,9 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  String? get currentUserId => userModel?.id;
+
+
   Future<bool> register({
     required String email,
     required String password,
@@ -143,6 +146,17 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> refreshUser() async {
+    try {
+      final userRepo = UserRepository.instance;
+      final user = await userRepo.getProfile();
+      _userData = user.toJson();
+      notifyListeners();
+    } catch (e) {
+      // Silently fail - user data might still be valid
     }
   }
 

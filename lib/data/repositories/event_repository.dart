@@ -49,7 +49,9 @@ class EventRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        return EventModel.fromJson(data ?? {});
+        // Backend returns { success: true, event: {...} }
+        final eventData = data?['event'] as Map<String, dynamic>? ?? data ?? {};
+        return EventModel.fromJson(eventData);
       }
 
       throw Exception('Failed to load event: ${response.statusCode}');

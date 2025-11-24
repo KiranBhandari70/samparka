@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:samparka/data/models/user_model.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../provider/auth_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/primary_button.dart';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key, UserModel? user});
+  final UserModel? user;
+  const EditProfilePage({super.key, this.user});
 
   static const String routeName = '/edit-profile';
 
@@ -16,31 +20,29 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'John Doe');
-  final _ageController = TextEditingController(text: '28');
-  final _locationController = TextEditingController(text: 'New York, USA');
-  final _bioController =
-  TextEditingController(text: 'Tech enthusiast | Coffee Lover | Adventurous');
+  late final TextEditingController _nameController;
+  late final TextEditingController _ageController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _bioController;
 
-  List<String> _selectedInterests = ['Tech', 'Music', 'Sports'];
+  List<String> _selectedInterests = [];
+  bool _isLoading = true;
+  String? _profileImageUrl;
+  bool _isVerified = false;
 
   final List<String> _availableInterests = [
-    'Tech',
-    'Music',
-    'Sports',
-    'Art',
-    'Food',
-    'Travel',
-    'Fitness',
-    'Gaming',
-    'Reading',
-    'Photography',
-    'Dancing',
-    'Cooking'
+    'Music', 'Art', 'Sports', 'Tech', 'Social', 'Food', 'Wellness', 'Others',
   ];
 
-  bool _isVerified = false;
-  String _profileImageUrl = 'https://i.pravatar.cc/150?img=1';
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _ageController = TextEditingController();
+    _locationController = TextEditingController();
+    _bioController = TextEditingController();
+    _loadUserData();
+  }
 
   @override
   void dispose() {
@@ -51,35 +53,106 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    setState(() {
-      _profileImageUrl =
-      'https://i.pravatar.cc/150?img=${DateTime.now().millisecondsSinceEpoch % 70}';
-    });
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.refreshUser();
+      final user = widget.user ?? authProvider.userModel;
+
+      if (user != null && mounted) {
+        setState(() {
+          _nameController.text = user.name;
+          _ageController.text = user.age?.toString() ?? '';
+          _locationController.text = user.locationLabel ?? '';
+          _bioController.text = user.bio ?? '';
+          _selectedInterests = List<String>.from(user.interests);
+          _profileImageUrl = user.avatarUrl;
+          _isVerified = user.verified;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _pickImage() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Image picker coming soon')),
+    );
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    final userData = {
+      'name': _nameController.text.trim(),
+      'age': int.tryParse(_ageController.text.trim()),
+      'locationLabel': _locationController.text.trim(),
+      'bio': _bioController.text.trim(),
+      'interests': _selectedInterests,
+    };
+
+    final success = await userProvider.updateProfile(userData);
+
+    if (!mounted) return;
+
+    if (success) {
+      // Update interests if changed
+      if (_selectedInterests.isNotEmpty) {
+        await userProvider.updateInterests(_selectedInterests);
+      }
+      await authProvider.refreshUser();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated successfully!')),
       );
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(userProvider.error ?? 'Failed to update profile'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(title: const Text('Edit Profile')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Edit Profile'),
         actions: [
-          TextButton(
-            onPressed: _saveProfile,
-            child: Text(
-              'Save',
-              style: AppTextStyles.button.copyWith(color: AppColors.primary),
-            ),
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              return TextButton(
+                onPressed: userProvider.isLoading ? null : _saveProfile,
+                child: userProvider.isLoading
+                    ? const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+                    : Text(
+                  'Save',
+                  style: AppTextStyles.button.copyWith(color: AppColors.primary),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -96,7 +169,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     children: [
                       CircleAvatar(
                         radius: 60,
-                        backgroundImage: NetworkImage(_profileImageUrl),
+                        backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                            ? NetworkImage(_profileImageUrl!)
+                            : null,
+                        child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                            ? const Icon(Icons.person, size: 60)
+                            : null,
                       ),
                       Positioned(
                         bottom: 0,
@@ -105,8 +183,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           radius: 20,
                           backgroundColor: AppColors.primary,
                           child: IconButton(
-                            icon: const Icon(Icons.camera_alt,
-                                size: 18, color: Colors.white),
+                            icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
                             onPressed: _pickImage,
                           ),
                         ),
@@ -116,7 +193,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 const SizedBox(height: 24),
 
-                // Full name
                 TextFormField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -124,13 +200,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     hintText: 'Enter your full name',
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
+                    if (value == null || value.isEmpty) return 'Please enter your name';
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
 
                 Row(
@@ -144,13 +217,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           hintText: 'Enter your age',
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your age';
-                          }
+                          if (value == null || value.isEmpty) return 'Please enter your age';
                           final age = int.tryParse(value);
-                          if (age == null || age < 13 || age > 120) {
-                            return 'Please enter a valid age';
-                          }
+                          if (age == null || age < 13 || age > 120) return 'Please enter a valid age';
                           return null;
                         },
                       ),
@@ -164,16 +233,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           hintText: 'City, Country',
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your location';
-                          }
+                          if (value == null || value.isEmpty) return 'Please enter your location';
                           return null;
                         },
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 16),
 
                 TextFormField(
@@ -184,15 +250,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     hintText: 'Tell us about yourself',
                   ),
                 ),
-
                 const SizedBox(height: 24),
 
                 Row(
                   children: [
-                    Text(
-                      'Profile Verification',
-                      style: AppTextStyles.heading3,
-                    ),
+                    Text('Profile Verification', style: AppTextStyles.heading3),
                     const Spacer(),
                     Switch(
                       value: _isVerified,
@@ -201,8 +263,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         if (value) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text(
-                                  'Verification request submitted. It may take 24-48 hours to process.'),
+                              content: Text('Verification request submitted. It may take 24-48 hours.'),
                             ),
                           );
                         }
@@ -236,7 +297,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       ],
                     ),
                   ),
-
                 const SizedBox(height: 24),
 
                 Text('Interests', style: AppTextStyles.heading3),
@@ -247,29 +307,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   runSpacing: 12,
                   children: _availableInterests.map((interest) {
                     final isSelected = _selectedInterests.contains(interest);
-
                     return FilterChip(
                       label: Text(interest),
                       selected: isSelected,
-                      onSelected: (bool selected) {
+                      onSelected: (selected) {
                         setState(() {
-                          if (selected) {
-                            _selectedInterests.add(interest);
-                          } else {
-                            _selectedInterests.remove(interest);
-                          }
+                          if (selected) _selectedInterests.add(interest);
+                          else _selectedInterests.remove(interest);
                         });
                       },
                     );
                   }).toList(),
                 ),
-
                 const SizedBox(height: 32),
 
-                PrimaryButton(
-                  label: 'Save Changes',
-                  onPressed: _saveProfile,
-                ),
+                PrimaryButton(label: 'Save Changes', onPressed: _saveProfile),
               ],
             ),
           ),

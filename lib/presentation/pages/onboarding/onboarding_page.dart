@@ -120,7 +120,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           ),
                         ),
                         SizedBox(
-                          width: 140,
+                          width: 130,
                           child: PrimaryButton(
                             label: _currentIndex == _slides.length - 1
                                 ? 'Get Started'

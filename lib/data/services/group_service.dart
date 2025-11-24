@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/group_model.dart';
@@ -55,18 +60,19 @@ class GroupService {
     }
   }
 
-  Future<GroupModel> createGroup(Map<String, dynamic> groupData) async {
+  Future<GroupModel> createGroup(Map<String, dynamic> groupData, {File? imageFile}) async {
     try {
-      final response = await _apiClient.post(
-        ApiEndpoints.createGroup,
-        body: groupData,
+      final response = await _createOrUpdateGroupMultipart(
+        endpoint: ApiEndpoints.createGroup,
+        groupData: groupData,
+        imageFile: imageFile,
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
         // Backend returns { success: true, group: {...} }
-        final groupData = data?['group'] ?? data;
-        return GroupModel.fromJson(groupData as Map<String, dynamic>);
+        final responseData = data?['group'] ?? data;
+        return GroupModel.fromJson(responseData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to create group: ${response.statusCode}');
@@ -135,5 +141,35 @@ class GroupService {
     } catch (e) {
       throw Exception('Error sending message: $e');
     }
+  }
+
+  Future<http.Response> _createOrUpdateGroupMultipart({
+    required String endpoint,
+    required Map<String, dynamic> groupData,
+    File? imageFile,
+  }) async {
+    if (imageFile != null) {
+      final fields = <String, String>{};
+      groupData.forEach((key, value) {
+        if (value == null) return;
+        if (value is List || value is Map) {
+          fields[key] = jsonEncode(value);
+        } else {
+          fields[key] = value.toString();
+        }
+      });
+
+      return _apiClient.postMultipart(
+        endpoint,
+        fields: fields,
+        file: imageFile,
+        fileFieldName: 'image',
+      );
+    }
+
+    return _apiClient.post(
+      endpoint,
+      body: groupData,
+    );
   }
 }

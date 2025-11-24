@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/models/group_model.dart';
@@ -30,8 +32,8 @@ class GroupProvider extends ChangeNotifier {
 
     try {
       _groups = await _groupService.getGroups();
-      _myGroups = _groups.where((g) => g.isJoined).toList();
-      _suggestedGroups = _groups.where((g) => !g.isJoined).toList();
+      _myGroups = [];
+      _suggestedGroups = _groups;
       _setLoading(false);
       notifyListeners();
     } catch (e) {
@@ -125,6 +127,24 @@ class GroupProvider extends ChangeNotifier {
       _setError(e.toString());
       _setLoading(false);
       notifyListeners();
+    }
+  }
+
+  Future<GroupModel?> createGroup(Map<String, dynamic> groupData, {File? imageFile}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final group = await _groupService.createGroup(groupData, imageFile: imageFile);
+      await loadGroups(); // Reload groups list
+      _setLoading(false);
+      notifyListeners();
+      return group;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return null;
     }
   }
 

@@ -6,21 +6,26 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/group_model.dart';
 import '../../widgets/group_tile.dart';
 import 'group_chat_page.dart';
+import 'group_detail_page.dart';
 import 'create_group_page.dart';
 
 class GroupPage extends StatelessWidget {
-  final List<GroupModel> groups; // <-- Real groups from backend
+  final List<GroupModel> groups; // Groups from backend
+  final String currentUserId; // Pass current user id here
 
   const GroupPage({
     super.key,
-    required this.groups, // <-- Pass real list here
+    required this.groups,
+    required this.currentUserId,
   });
 
   @override
   Widget build(BuildContext context) {
     // Separate joined and suggested groups
-    final myGroups = groups.where((group) => group.isJoined).toList();
-    final suggestedGroups = groups.where((group) => !group.isJoined).toList();
+    final myGroups =
+    groups.where((group) => group.isMember(currentUserId)).toList();
+    final suggestedGroups =
+    groups.where((group) => !group.isMember(currentUserId)).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -68,42 +73,29 @@ class GroupPage extends StatelessWidget {
                 ...myGroups.map(
                       (group) => GroupTile(
                     group: group,
-                    onTap: () => _openChat(context, group),
-                    onPrimaryAction: () => _openChat(context, group),
-                        onChatTap: () {
-                          _openChat(context, group);
-                        },
-
-                      ),
+                    isMember: true,
+                    onTap: () => _openDetails(context, group),
+                  ),
                 ),
                 const SizedBox(height: 24),
               ],
 
               /// SUGGESTED GROUPS
-              const _SectionTitle(
-                title: 'Suggested Groups',
-                icon: Icons.recommend_rounded,
-              ),
-              const SizedBox(height: 16),
-
-              ...suggestedGroups.map(
-                    (group) => GroupTile(
-                  group: group,
-                  onPrimaryAction: () {
-                    // You will replace this with backend join logic
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Joined ${group.name}!')),
-                    );
-                    _openChat(context, group);
-                  },
-                      onChatTap: () {
-                        _openChat(context, group);
-                      },
-
-                    ),
-              ),
-
-              const SizedBox(height: 32),
+              if (suggestedGroups.isNotEmpty) ...[
+                const _SectionTitle(
+                  title: 'Suggested Groups',
+                  icon: Icons.recommend_rounded,
+                ),
+                const SizedBox(height: 16),
+                ...suggestedGroups.map(
+                      (group) => GroupTile(
+                    group: group,
+                    isMember: false,
+                    onTap: () => _openDetails(context, group),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ],
           ),
         ),
@@ -115,6 +107,13 @@ class GroupPage extends StatelessWidget {
     Navigator.of(context).pushNamed(
       GroupChatPage.routeName,
       arguments: GroupChatArgs(group: group),
+    );
+  }
+
+  void _openDetails(BuildContext context, GroupModel group) {
+    Navigator.of(context).pushNamed(
+      GroupDetailPage.routeName,
+      arguments: {'group': group},
     );
   }
 }

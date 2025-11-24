@@ -15,7 +15,9 @@ class UserRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        return UserModel.fromJson(data ?? {});
+        // Backend returns { success: true, user: {...} }
+        final userData = data?['user'] as Map<String, dynamic>? ?? data ?? {};
+        return UserModel.fromJson(userData);
       }
 
       throw Exception('Failed to load profile: ${response.statusCode}');

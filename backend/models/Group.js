@@ -1,19 +1,22 @@
 import mongoose from 'mongoose';
 
-const groupLocationSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    enum: ['Point'],
-    default: 'Point',
+const groupLocationSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number],
+      required: true,
+    },
+    placeName: {
+      type: String,
+    },
   },
-  coordinates: {
-    type: [Number],
-    required: true,
-  },
-  placeName: {
-    type: String,
-  },
-}, { _id: false });
+  { _id: false }
+);
 
 const groupSchema = new mongoose.Schema(
   {
@@ -28,9 +31,17 @@ const groupSchema = new mongoose.Schema(
     },
     keyword: {
       type: String,
-      required: [true, 'Group keyword is required'],
+      required: true,
+      unique: true, // Prevent duplicate keyword errors
       trim: true,
-      unique: true,
+    },
+    keywords: {
+      type: [String],
+      default: [],
+    },
+    imageUrl: {
+      type: String,
+      default: '',
     },
     location: {
       type: groupLocationSchema,
@@ -54,11 +65,11 @@ const groupSchema = new mongoose.Schema(
 // Index for geospatial queries
 groupSchema.index({ 'location.coordinates': '2dsphere' });
 
-// Index for keyword
-groupSchema.index({ keyword: 1 });
+// Index for keywords array (optional, can help with search)
+groupSchema.index({ keywords: 1 });
 
 // Text index for search
-groupSchema.index({ name: 'text', description: 'text', keyword: 'text' });
+groupSchema.index({ name: 'text', description: 'text', keywords: 'text' });
 
 // Virtual for member count
 groupSchema.virtual('memberCount').get(function () {
@@ -71,4 +82,3 @@ groupSchema.set('toJSON', { virtuals: true });
 const Group = mongoose.model('Group', groupSchema);
 
 export default Group;
-

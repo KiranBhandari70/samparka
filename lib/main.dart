@@ -10,9 +10,12 @@ import 'data/models/group_model.dart';
 import 'data/models/user_model.dart';
 import 'provider/auth_provider.dart';
 import 'provider/event_provider.dart';
+import 'provider/group_provider.dart';
+import 'provider/user_provider.dart';
 
 import 'presentation/navigation/main_shell.dart';
 import 'presentation/pages/auth/auth_page.dart';
+import 'presentation/pages/auth/interests_selection_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/pages/settings/settings_page.dart';
 import 'presentation/pages/splash/splash_page.dart';
@@ -49,7 +52,6 @@ class _SamparkaAppState extends State<SamparkaApp> {
   @override
   void initState() {
     super.initState();
-    // Request permissions after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         PermissionHelper.requestAllPermissions(context);
@@ -63,107 +65,117 @@ class _SamparkaAppState extends State<SamparkaApp> {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EventProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => GroupProvider()),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         initialRoute: SplashPage.routeName,
-      onGenerateRoute: (settings) {
-        switch (settings.name) {
-          case SplashPage.routeName:
-            return MaterialPageRoute(builder: (_) => const SplashPage());
+        onGenerateRoute: (settings) {
+          switch (settings.name) {
+            case SplashPage.routeName:
+              return MaterialPageRoute(builder: (_) => const SplashPage());
 
-          case OnboardingPage.routeName:
-            return MaterialPageRoute(builder: (_) => const OnboardingPage());
+            case OnboardingPage.routeName:
+              return MaterialPageRoute(builder: (_) => const OnboardingPage());
 
-          case AuthPage.routeName:
-            return MaterialPageRoute(builder: (_) => const AuthPage());
+            case AuthPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AuthPage());
 
-          case MainShell.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final user = args?['user'] as UserModel?;
-            return MaterialPageRoute(
+            case MainShell.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final user = args?['user'] as UserModel?;
+              return MaterialPageRoute(
                 builder: (_) => user != null
                     ? MainShell(user: user)
-                    : const SplashPage()); // fallback
+                    : const SplashPage(),
+              );
 
-          case EventDetailPage.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final event = args?['event'] as EventModel?;
-            if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-            return MaterialPageRoute(builder: (_) => EventDetailPage(event: event));
+            case EventDetailPage.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final event = args?['event'] as EventModel?;
+              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+              return MaterialPageRoute(builder: (_) => EventDetailPage(event: event));
 
-          case GroupChatPage.routeName:
-            final args = settings.arguments as GroupChatArgs?;
-            if (args == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-            return MaterialPageRoute(builder: (_) => GroupChatPage(group: args.group));
+            case GroupChatPage.routeName:
+              final args = settings.arguments as GroupChatArgs?;
+              if (args == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+              return MaterialPageRoute(builder: (_) => GroupChatPage(group: args.group));
 
-          case SettingsPage.routeName:
-            return MaterialPageRoute(builder: (_) => const SettingsPage());
+            case SettingsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const SettingsPage());
 
-          case EditProfilePage.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final user = args?['user'] as UserModel?;
-            return MaterialPageRoute(builder: (_) => EditProfilePage(user: user));
+            case EditProfilePage.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final user = args?['user'] as UserModel?;
+              return MaterialPageRoute(builder: (_) => EditProfilePage(user: user));
 
-          case EditEventPage.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final event = args?['event'] as EventModel?;
-            if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-            return MaterialPageRoute(builder: (_) => EditEventPage(event: event));
+            case InterestsSelectionPage.routeName:
+              return MaterialPageRoute(builder: (_) => const InterestsSelectionPage());
 
-          case TicketPurchasePage.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final event = args?['event'] as EventModel?;
-            final ticketPrice = args?['ticketPrice'] as double? ?? 25.0;
-            if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-            return MaterialPageRoute(
-                builder: (_) => TicketPurchasePage(event: event, ticketPrice: ticketPrice));
+            case EditEventPage.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final event = args?['event'] as EventModel?;
+              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+              return MaterialPageRoute(builder: (_) => EditEventPage(event: event));
 
-          case RewardsDashboardPage.routeName:
-            return MaterialPageRoute(builder: (_) => const RewardsDashboardPage());
+            case TicketPurchasePage.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final event = args?['event'] as EventModel?;
+              if (event == null) {
+                return MaterialPageRoute(builder: (_) => const SplashPage());
+              }
+              return MaterialPageRoute(
+                builder: (_) => TicketPurchasePage(event: event),
+              );
 
-          case PartnerBusinessesPage.routeName:
-            return MaterialPageRoute(builder: (_) => const PartnerBusinessesPage());
 
-          case GroupDetailPage.routeName:
-            return MaterialPageRoute(builder: (_) => const GroupDetailPage());
+            case RewardsDashboardPage.routeName:
+              return MaterialPageRoute(builder: (_) => const RewardsDashboardPage());
 
-          case GroupsListPage.routeName:
-            return MaterialPageRoute(builder: (_) => const GroupsListPage(groups: [],));
+            case PartnerBusinessesPage.routeName:
+              return MaterialPageRoute(builder: (_) => const PartnerBusinessesPage());
 
-          case CreateGroupPage.routeName:
-            return MaterialPageRoute(builder: (_) => const CreateGroupPage());
+            case GroupDetailPage.routeName:
+              final args = settings.arguments as Map<String, dynamic>?;
+              final group = args?['group'] as GroupModel?;
+              if (group == null) {
+                return MaterialPageRoute(builder: (_) => const SplashPage());
+              }
+              return MaterialPageRoute(
+                builder: (_) => GroupDetailPage(group: group),
+              );
 
-          case AdminDashboardPage.routeName:
-            return MaterialPageRoute(builder: (_) => const AdminDashboardPage());
+            case GroupsListPage.routeName:
+              return MaterialPageRoute(builder: (_) => const GroupsListPage());
 
-          case AdminUsersPage.routeName:
-            return MaterialPageRoute(builder: (_) => const AdminUsersPage());
+            case CreateGroupPage.routeName:
+              return MaterialPageRoute(builder: (_) => const CreateGroupPage());
 
-          case AdminEventsPage.routeName:
-            return MaterialPageRoute(builder: (_) => const AdminEventsPage());
+            case AdminDashboardPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AdminDashboardPage());
 
-          case BusinessDashboardPage.routeName:
-            return MaterialPageRoute(builder: (_) => const BusinessDashboardPage());
+            case AdminUsersPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AdminUsersPage());
 
-          case BusinessEventsPage.routeName:
-            return MaterialPageRoute(builder: (_) => const BusinessEventsPage());
+            case AdminEventsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AdminEventsPage());
 
-          case BusinessPartnersPage.routeName:
-            return MaterialPageRoute(builder: (_) => const BusinessPartnersPage());
+            case BusinessDashboardPage.routeName:
+              return MaterialPageRoute(builder: (_) => const BusinessDashboardPage());
 
-          case CategoryExplorePage.routeName:
-            final args = settings.arguments as Map<String, dynamic>?;
-            final category = args?['category'] as EventCategory?;
-            if (category == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-            return MaterialPageRoute(builder: (_) => CategoryExplorePage(category: category));
+            case BusinessEventsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const BusinessEventsPage());
 
-          default:
-            return MaterialPageRoute(builder: (_) => const SplashPage());
-        }
-      },
+            case BusinessPartnersPage.routeName:
+              return MaterialPageRoute(builder: (_) => const BusinessPartnersPage());
+
+            default:
+              return MaterialPageRoute(builder: (_) => const SplashPage());
+          }
+        },
       ),
     );
   }
