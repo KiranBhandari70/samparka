@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:samparka/data/models/user_model.dart';
 
@@ -24,11 +27,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final TextEditingController _ageController;
   late final TextEditingController _locationController;
   late final TextEditingController _bioController;
+  final ImagePicker _imagePicker = ImagePicker();
 
   List<String> _selectedInterests = [];
   bool _isLoading = true;
   String? _profileImageUrl;
   bool _isVerified = false;
+  File? _localAvatarFile;
+  bool _isUploadingAvatar = false;
 
   final List<String> _availableInterests = [
     'Music', 'Art', 'Sports', 'Tech', 'Social', 'Food', 'Wellness', 'Others',
@@ -67,7 +73,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _locationController.text = user.locationLabel ?? '';
           _bioController.text = user.bio ?? '';
           _selectedInterests = List<String>.from(user.interests);
-          _profileImageUrl = user.avatarUrl;
+          _profileImageUrl = user.avatarUrlResolved ?? user.avatarUrl;
+          _localAvatarFile = null;
           _isVerified = user.verified;
           _isLoading = false;
         });
@@ -80,9 +87,65 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _pickImage() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Image picker coming soon')),
-    );
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() {
+        _localAvatarFile = File(pickedFile.path);
+        _isUploadingAvatar = true;
+      });
+
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final success = await userProvider.uploadAvatar(pickedFile.path);
+
+      if (!mounted) return;
+
+      if (success) {
+        await authProvider.refreshUser();
+        setState(() {
+          _profileImageUrl = authProvider.userModel?.avatarUrlResolved ??
+              userProvider.currentUser?.avatarUrlResolved ??
+              _profileImageUrl;
+          _localAvatarFile = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated!')),
+        );
+      } else {
+        setState(() {
+          _localAvatarFile = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userProvider.error ?? 'Failed to upload profile picture'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _localAvatarFile = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unable to pick image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingAvatar = false;
+        });
+      }
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -133,6 +196,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       );
     }
 
+    final avatarImage = _currentAvatarImage();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -169,13 +234,30 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     children: [
                       CircleAvatar(
                         radius: 60,
-                        backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                            ? NetworkImage(_profileImageUrl!)
-                            : null,
-                        child: _profileImageUrl == null || _profileImageUrl!.isEmpty
+                        backgroundImage: avatarImage,
+                        child: avatarImage == null
                             ? const Icon(Icons.person, size: 60)
                             : null,
                       ),
+                      if (_isUploadingAvatar)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.4),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 30,
+                                height: 30,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -328,5 +410,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
       ),
     );
+  }
+
+  ImageProvider? _currentAvatarImage() {
+    if (_localAvatarFile != null) {
+      return FileImage(_localAvatarFile!);
+    }
+
+    if (_profileImageUrl != null && _profileImageUrl!.isNotEmpty) {
+      return NetworkImage(_profileImageUrl!);
+    }
+
+    return null;
   }
 }

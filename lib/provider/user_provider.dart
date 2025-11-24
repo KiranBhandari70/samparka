@@ -53,30 +53,8 @@ class UserProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      final avatarUrl = await _profileService.uploadAvatar(imagePath);
-      if (_currentUser != null) {
-        _currentUser = UserModel(
-          id: _currentUser!.id,
-          name: _currentUser!.name,
-          email: _currentUser!.email,
-          passwordHash: _currentUser!.passwordHash,
-          authProvider: _currentUser!.authProvider,
-          age: _currentUser!.age,
-          interests: _currentUser!.interests,
-          bio: _currentUser!.bio,
-          avatarUrl: avatarUrl,
-          locationLabel: _currentUser!.locationLabel,
-          location: _currentUser!.location,
-          role: _currentUser!.role,
-          verificationStatus: _currentUser!.verificationStatus,
-          verified: _currentUser!.verified,
-          rewardBalance: _currentUser!.rewardBalance,
-          blocked: _currentUser!.blocked,
-          businessProfile: _currentUser!.businessProfile,
-          createdAt: _currentUser!.createdAt,
-          updatedAt: _currentUser!.updatedAt,
-        );
-      }
+      final updatedUser = await _profileService.uploadAvatar(imagePath);
+      _currentUser = updatedUser;
       _setLoading(false);
       notifyListeners();
       return true;

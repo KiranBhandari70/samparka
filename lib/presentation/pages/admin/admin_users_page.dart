@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:samparka/config/environment.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
@@ -223,6 +224,7 @@ class _UserCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isBlocked = user['isBlocked'] as bool? ?? false;
     final isVerified = user['isVerified'] as bool? ?? false;
+    final avatarImage = _resolveAvatar(user['avatarUrl']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -244,11 +246,8 @@ class _UserCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundImage: user['avatarUrl'] != null
-                ? NetworkImage(user['avatarUrl'])
-                : null,
-            child:
-            user['avatarUrl'] == null ? const Icon(Icons.person) : null,
+            backgroundImage: avatarImage,
+            child: avatarImage == null ? const Icon(Icons.person) : null,
           ),
           const SizedBox(width: 16),
 
@@ -313,4 +312,12 @@ class _UserCard extends StatelessWidget {
       ),
     );
   }
+}
+
+ImageProvider? _resolveAvatar(dynamic url) {
+  if (url is! String || url.isEmpty) return null;
+  final resolved = url.startsWith('http')
+      ? url
+      : '${Environment.apiBaseUrl}$url';
+  return NetworkImage(resolved);
 }

@@ -1,3 +1,5 @@
+import 'package:samparka/config/environment.dart';
+
 class UserModel {
   final String id;
   final String name;
@@ -87,6 +89,18 @@ class UserModel {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
+  }
+
+  String? get avatarUrlResolved {
+    if (avatarUrl == null || avatarUrl!.isEmpty) return null;
+    if (avatarUrl!.startsWith('http')) return avatarUrl!;
+    return '${Environment.apiBaseUrl}$avatarUrl';
+  }
+
+  String get avatarUrlOrPlaceholder {
+    return avatarUrlResolved ??
+        'https://ui-avatars.com/api/?name=${Uri.encodeComponent(name.isNotEmpty ? name : 'User')}'
+            '&background=2F80ED&color=ffffff';
   }
 }
 

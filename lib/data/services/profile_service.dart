@@ -15,7 +15,7 @@ class ProfileService {
     return _repository.updateProfile(userData);
   }
 
-  Future<String> uploadAvatar(String imagePath) async {
+  Future<UserModel> uploadAvatar(String imagePath) async {
     return _repository.uploadAvatar(imagePath);
   }
 

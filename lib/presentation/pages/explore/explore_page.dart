@@ -320,12 +320,17 @@ class _UserCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 36,
-            backgroundImage: NetworkImage(user.avatarUrl ?? ''),
+            backgroundImage: user.avatarUrlResolved != null
+                ? NetworkImage(user.avatarUrlResolved!)
+                : null,
             backgroundColor: AppColors.border,
+            child: user.avatarUrlResolved == null
+                ? const Icon(Icons.person, color: AppColors.textSecondary)
+                : null,
           ),
           const SizedBox(height: 8),
           Text(
-            user.name ?? '',
+            user.name,
             style: AppTextStyles.caption,
             textAlign: TextAlign.center,
             maxLines: 1,

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/user_model.dart';
@@ -46,14 +48,29 @@ class UserRepository {
     }
   }
 
-  Future<String> uploadAvatar(String imagePath) async {
+  Future<UserModel> uploadAvatar(String imagePath) async {
     try {
-      // TODO: Implement file upload using multipart request
-      final response = await _apiClient.post(ApiEndpoints.uploadAvatar);
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        throw Exception('Selected image does not exist.');
+      }
+
+      final response = await _apiClient.postMultipart(
+        ApiEndpoints.uploadAvatar,
+        file: file,
+        fileFieldName: 'avatar',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = _apiClient.parseResponse(response);
-        return data?['avatarUrl'] as String? ?? '';
+        final userJson = data?['user'] as Map<String, dynamic>?;
+
+        if (userJson != null) {
+          return UserModel.fromJson(userJson);
+        }
+
+        // Fallback: fetch the latest profile if user data was not returned
+        return await getProfile();
       }
 
       throw Exception('Failed to upload avatar: ${response.statusCode}');
@@ -74,6 +91,26 @@ class UserRepository {
       }
     } catch (e) {
       throw Exception('Error updating interests: $e');
+    }
+  }
+
+  Future<List<UserModel>> getRegisteredUsers({int limit = 10}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.registeredUsers}?limit=$limit',
+      );
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.parseResponse(response);
+        final users = data?['users'] as List<dynamic>? ?? [];
+        return users
+            .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw Exception('Failed to load registered users: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error fetching registered users: $e');
     }
   }
 

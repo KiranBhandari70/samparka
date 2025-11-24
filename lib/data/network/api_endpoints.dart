@@ -17,6 +17,7 @@ class ApiEndpoints {
   static const String updateProfile = '$baseUrl/user/profile';
   static const String uploadAvatar = '$baseUrl/user/avatar';
   static const String interests = '$baseUrl/user/interests';
+  static const String registeredUsers = '$baseUrl/users/registered';
 
   // Event endpoints
   static const String events = '$baseUrl/events';

@@ -358,10 +358,10 @@ class _OrganizerCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundImage: host!.avatarUrl != null && host!.avatarUrl!.isNotEmpty
-                ? NetworkImage(host!.avatarUrl!)
+            backgroundImage: host!.avatarUrlResolved != null
+                ? NetworkImage(host!.avatarUrlResolved!)
                 : null,
-            child: host!.avatarUrl == null || host!.avatarUrl!.isEmpty
+            child: host!.avatarUrlResolved == null
                 ? const Icon(Icons.person)
                 : null,
           ),

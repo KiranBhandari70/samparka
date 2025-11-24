@@ -175,10 +175,10 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           CircleAvatar(
             radius: 48,
-            backgroundImage: (displayUser.avatarUrl?.isNotEmpty ?? false)
-                ? NetworkImage(displayUser.avatarUrl!)
+            backgroundImage: displayUser.avatarUrlResolved != null
+                ? NetworkImage(displayUser.avatarUrlResolved!)
                 : null,
-            child: (displayUser.avatarUrl == null || displayUser.avatarUrl!.isEmpty)
+            child: displayUser.avatarUrlResolved == null
                 ? const Icon(Icons.person, size: 48, color: Colors.white)
                 : null,
           ),

@@ -1,5 +1,12 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 import User from '../models/User.js';
 import Event from '../models/Event.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    Get user profile
 // @route   GET /api/v1/user/profile
@@ -65,9 +72,29 @@ export const uploadAvatar = async (req, res, next) => {
     }
 
     const user = await User.findById(req.user._id);
-    
+
+    // Remove old avatar from disk if it exists
+    if (user.avatarUrl && user.avatarUrl.startsWith('/uploads/')) {
+      const oldAvatarPath = path.join(__dirname, '..', user.avatarUrl.replace(/^\//, ''));
+      if (fs.existsSync(oldAvatarPath)) {
+        try {
+          await fs.promises.unlink(oldAvatarPath);
+        } catch (unlinkError) {
+          console.warn('Failed to remove previous avatar:', unlinkError.message);
+        }
+      }
+    }
+
     // In production, upload to cloud storage (S3, Cloudinary, etc.)
     // For now, use local path
+    const savedFilePath = path.join(__dirname, '..', 'uploads', req.file.filename);
+    if (!fs.existsSync(savedFilePath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to save avatar file',
+      });
+    }
+
     const avatarUrl = `/uploads/${req.file.filename}`;
     user.avatarUrl = avatarUrl;
     await user.save();
@@ -75,6 +102,28 @@ export const uploadAvatar = async (req, res, next) => {
     res.json({
       success: true,
       avatarUrl: user.avatarUrl,
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get recently registered users
+// @route   GET /api/v1/users/registered
+// @access  Public
+export const getRegisteredUsers = async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    const users = await User.find({})
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .select('name avatarUrl interests locationLabel role createdAt');
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
     });
   } catch (error) {
     next(error);
