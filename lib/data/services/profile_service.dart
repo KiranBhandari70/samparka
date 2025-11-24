@@ -22,4 +22,8 @@ class ProfileService {
   Future<void> updateInterests(List<String> interests) async {
     return _repository.updateInterests(interests);
   }
+
+  Future<List<UserModel>> getRegisteredUsers({int limit = 10}) {
+    return _repository.getRegisteredUsers(limit: limit);
+  }
 }

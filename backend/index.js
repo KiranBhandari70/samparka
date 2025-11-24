@@ -10,7 +10,6 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 // Routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import usersRoutes from './routes/usersRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
@@ -57,11 +56,11 @@ app.get('/', (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/user', userRoutes);
-app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/events', eventRoutes);
 app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/search', searchRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);

@@ -11,10 +11,16 @@ class UserProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   UserModel? _currentUser;
+  List<UserModel> _registeredUsers = [];
+  bool _registeredUsersLoading = false;
+  String? _registeredUsersError;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
   UserModel? get currentUser => _currentUser;
+  List<UserModel> get registeredUsers => _registeredUsers;
+  bool get registeredUsersLoading => _registeredUsersLoading;
+  String? get registeredUsersError => _registeredUsersError;
 
   Future<void> loadProfile() async {
     _setLoading(true);
@@ -103,6 +109,22 @@ class UserProvider extends ChangeNotifier {
       _setLoading(false);
       notifyListeners();
       return false;
+    }
+  }
+
+  Future<void> loadRegisteredUsers({int limit = 10}) async {
+    _registeredUsersLoading = true;
+    _registeredUsersError = null;
+    notifyListeners();
+
+    try {
+      _registeredUsers =
+          await _profileService.getRegisteredUsers(limit: limit);
+    } catch (e) {
+      _registeredUsersError = e.toString();
+    } finally {
+      _registeredUsersLoading = false;
+      notifyListeners();
     }
   }
 

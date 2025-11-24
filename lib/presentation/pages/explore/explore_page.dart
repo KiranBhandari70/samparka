@@ -8,6 +8,7 @@ import '../../../data/models/category_model.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../provider/event_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
@@ -25,18 +26,25 @@ class _ExplorePageState extends State<ExplorePage> {
 
   final List<EventCategory> _categories = EventCategory.values;
 
-  // TODO: Replace these with backend fetched data
-  final List<UserModel> _registeredUsers = [];
-
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEvents();
+      _loadRegisteredUsers();
+    });
   }
+
 
   Future<void> _loadEvents() async {
     final eventProvider = Provider.of<EventProvider>(context, listen: false);
     await eventProvider.loadUpcomingEvents();
+  }
+
+  Future<void> _loadRegisteredUsers() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.loadRegisteredUsers();
   }
 
   List<EventModel> _getFilteredEvents(EventProvider eventProvider) {
@@ -140,20 +148,51 @@ class _ExplorePageState extends State<ExplorePage> {
 
               SizedBox(
                 height: 140,
-                child: _registeredUsers.isEmpty
-                    ? Center(
-                  child: Text(
-                    'No registered users',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                )
-                    : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _registeredUsers.length,
-                  itemBuilder: (context, index) {
-                    return _UserCard(user: _registeredUsers[index]);
+                child: Consumer<UserProvider>(
+                  builder: (context, userProvider, _) {
+                    if (userProvider.registeredUsersLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (userProvider.registeredUsersError != null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Failed to load users',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadRegisteredUsers,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final users = userProvider.registeredUsers;
+                    if (users.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No registered users',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        return _UserCard(user: users[index]);
+                      },
+                    );
                   },
                 ),
               ),
