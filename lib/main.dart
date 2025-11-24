@@ -93,6 +93,30 @@ class _SamparkaAppState extends State<SamparkaApp> {
                     : const SplashPage(),
               );
 
+            case InterestsSelectionPage.routeName:
+              return MaterialPageRoute(
+                builder: (context) => InterestsSelectionPage(
+                  onCompleted: () async {
+                    // Get the UserProvider
+                    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+                    // Update the selected interests
+                    await userProvider.updateInterests(userProvider.selectedInterests);
+
+                    // Navigate to the MainShell (home page) with the current user
+                    final currentUser = userProvider.currentUser;
+                    if (currentUser != null) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => MainShell(user: currentUser),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              );
+
+
             case EventDetailPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
@@ -112,9 +136,6 @@ class _SamparkaAppState extends State<SamparkaApp> {
               final user = args?['user'] as UserModel?;
               return MaterialPageRoute(builder: (_) => EditProfilePage(user: user));
 
-            case InterestsSelectionPage.routeName:
-              return MaterialPageRoute(builder: (_) => const InterestsSelectionPage());
-
             case EditEventPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
@@ -124,13 +145,8 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case TicketPurchasePage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
-              if (event == null) {
-                return MaterialPageRoute(builder: (_) => const SplashPage());
-              }
-              return MaterialPageRoute(
-                builder: (_) => TicketPurchasePage(event: event),
-              );
-
+              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+              return MaterialPageRoute(builder: (_) => TicketPurchasePage(event: event));
 
             case RewardsDashboardPage.routeName:
               return MaterialPageRoute(builder: (_) => const RewardsDashboardPage());
@@ -141,12 +157,8 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case GroupDetailPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final group = args?['group'] as GroupModel?;
-              if (group == null) {
-                return MaterialPageRoute(builder: (_) => const SplashPage());
-              }
-              return MaterialPageRoute(
-                builder: (_) => GroupDetailPage(group: group),
-              );
+              if (group == null) return MaterialPageRoute(builder: (_) => const SplashPage());
+              return MaterialPageRoute(builder: (_) => GroupDetailPage(group: group));
 
             case GroupsListPage.routeName:
               return MaterialPageRoute(builder: (_) => const GroupsListPage());

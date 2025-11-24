@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-
 import '../data/models/user_model.dart';
 import '../data/services/profile_service.dart';
 
@@ -8,118 +7,104 @@ class UserProvider extends ChangeNotifier {
 
   final ProfileService _profileService;
 
+  UserModel? _currentUser;
   bool _isLoading = false;
   String? _error;
-  UserModel? _currentUser;
+
   List<UserModel> _registeredUsers = [];
   bool _registeredUsersLoading = false;
   String? _registeredUsersError;
 
+  List<String> _selectedInterests = [];
+
+  // Getters
+  UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  UserModel? get currentUser => _currentUser;
+  List<String> get selectedInterests => _currentUser?.interests ?? _selectedInterests;
   List<UserModel> get registeredUsers => _registeredUsers;
   bool get registeredUsersLoading => _registeredUsersLoading;
   String? get registeredUsersError => _registeredUsersError;
 
+  // Load user profile
   Future<void> loadProfile() async {
     _setLoading(true);
     _clearError();
 
     try {
       _currentUser = await _profileService.getProfile();
-      _setLoading(false);
-      notifyListeners();
+      _selectedInterests = _currentUser?.interests ?? [];
     } catch (e) {
       _setError(e.toString());
+    } finally {
       _setLoading(false);
-      notifyListeners();
     }
   }
 
+  // Update profile
   Future<bool> updateProfile(Map<String, dynamic> userData) async {
     _setLoading(true);
     _clearError();
 
     try {
       _currentUser = await _profileService.updateProfile(userData);
-      _setLoading(false);
-      notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
+  // Upload avatar
   Future<bool> uploadAvatar(String imagePath) async {
     _setLoading(true);
     _clearError();
 
     try {
-      final updatedUser = await _profileService.uploadAvatar(imagePath);
-      _currentUser = updatedUser;
-      _setLoading(false);
-      notifyListeners();
+      _currentUser = await _profileService.uploadAvatar(imagePath);
       return true;
     } catch (e) {
       _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
+  // Update interests
   Future<bool> updateInterests(List<String> interests) async {
     _setLoading(true);
     _clearError();
 
     try {
+      // Update in service
       await _profileService.updateInterests(interests);
+
+      // Update locally
+      _selectedInterests = interests;
       if (_currentUser != null) {
-        _currentUser = UserModel(
-          id: _currentUser!.id,
-          name: _currentUser!.name,
-          email: _currentUser!.email,
-          passwordHash: _currentUser!.passwordHash,
-          authProvider: _currentUser!.authProvider,
-          age: _currentUser!.age,
-          interests: interests,
-          bio: _currentUser!.bio,
-          avatarUrl: _currentUser!.avatarUrl,
-          locationLabel: _currentUser!.locationLabel,
-          location: _currentUser!.location,
-          role: _currentUser!.role,
-          verificationStatus: _currentUser!.verificationStatus,
-          verified: _currentUser!.verified,
-          rewardBalance: _currentUser!.rewardBalance,
-          blocked: _currentUser!.blocked,
-          businessProfile: _currentUser!.businessProfile,
-          createdAt: _currentUser!.createdAt,
-          updatedAt: _currentUser!.updatedAt,
-        );
+        _currentUser = _currentUser!.copyWith(interests: interests);
       }
-      _setLoading(false);
-      notifyListeners();
+
       return true;
     } catch (e) {
       _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
       return false;
+    } finally {
+      _setLoading(false);
     }
   }
 
+  // Load registered users
   Future<void> loadRegisteredUsers({int limit = 10}) async {
     _registeredUsersLoading = true;
     _registeredUsersError = null;
     notifyListeners();
 
     try {
-      _registeredUsers =
-          await _profileService.getRegisteredUsers(limit: limit);
+      _registeredUsers = await _profileService.getRegisteredUsers(limit: limit);
     } catch (e) {
       _registeredUsersError = e.toString();
     } finally {
@@ -128,8 +113,10 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  // Private helpers
   void _setLoading(bool value) {
     _isLoading = value;
+    notifyListeners();
   }
 
   void _setError(String? value) {

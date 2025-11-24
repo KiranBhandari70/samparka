@@ -43,6 +43,51 @@ class UserModel {
     required this.updatedAt,
   });
 
+  UserModel copyWith({
+    String? id,
+    String? name,
+    String? email,
+    String? passwordHash,
+    String? authProvider,
+    int? age,
+    List<String>? interests,
+    String? bio,
+    String? avatarUrl,
+    String? locationLabel,
+    Location? location,
+    String? role,
+    String? verificationStatus,
+    bool? verified,
+    double? rewardBalance,
+    bool? blocked,
+    String? businessProfile,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      passwordHash: passwordHash ?? this.passwordHash,
+      authProvider: authProvider ?? this.authProvider,
+      age: age ?? this.age,
+      interests: interests ?? this.interests,
+      bio: bio ?? this.bio,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      locationLabel: locationLabel ?? this.locationLabel,
+      location: location ?? this.location,
+      role: role ?? this.role,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      verified: verified ?? this.verified,
+      rewardBalance: rewardBalance ?? this.rewardBalance,
+      blocked: blocked ?? this.blocked,
+      businessProfile: businessProfile ?? this.businessProfile,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',

@@ -17,6 +17,7 @@ class MainShell extends StatefulWidget {
 
   static const String routeName = '/home';
 
+  /// Helper to navigate to home tab
   static void navigateToHome(BuildContext? context) {
     if (context != null) {
       final state = context.findAncestorStateOfType<_MainShellState>();
@@ -36,12 +37,12 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
 
-    // Pages with actual logged-in user
+    // Pages that may use the logged-in user
     _pages = [
       const HomePage(),
       const ExplorePage(),
       const AddEventPage(),
-      const GroupsListPage(), // <-- updated to use GroupsListPage
+      const GroupsListPage(),
       ProfilePage(user: widget.user),
     ];
   }
@@ -98,13 +99,13 @@ class _PlusIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 44,
+      height: 44,
       decoration: const BoxDecoration(
         color: AppColors.primary,
         shape: BoxShape.circle,
       ),
-      child: const Icon(Icons.add, color: Colors.white),
+      child: const Icon(Icons.add, color: Colors.white, size: 28),
     );
   }
 }

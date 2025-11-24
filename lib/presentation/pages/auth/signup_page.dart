@@ -6,6 +6,7 @@ import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/validators.dart';
 import '../../../provider/auth_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../auth/auth_page.dart';
 import '../auth/interests_selection_page.dart';
@@ -13,6 +14,8 @@ import '../../navigation/main_shell.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
+
+  static const String routeName = '/signup';
 
   @override
   State<SignUpPage> createState() => _SignUpPageState();
@@ -38,27 +41,36 @@ class _SignUpPageState extends State<SignUpPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
     final success = await authProvider.register(
       email: _emailController.text,
       password: _passwordController.text,
     );
 
     if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => InterestsSelectionPage(
+          onCompleted: () async {
+            final userProvider = Provider.of<UserProvider>(context, listen: false);
+            final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-    if (success && authProvider.userModel != null) {
-      // Always navigate to interests page after registration for new users
-      // New users won't have interests set yet
-      Navigator.of(context).pushReplacementNamed(
-        InterestsSelectionPage.routeName,
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.error ?? 'Registration failed'),
-          backgroundColor: Colors.red,
+            // Refresh user data if needed
+            await authProvider.refreshUser();
+
+            if (authProvider.userModel != null) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => MainShell(user: authProvider.userModel!),
+                ),
+              );
+            }
+          },
         ),
-      );
-    }
+      ),
+    );
+
   }
 
   @override
@@ -134,7 +146,8 @@ class _SignUpPageState extends State<SignUpPage> {
                             color: AppColors.textMuted,
                           ),
                           onPressed: () {
-                            setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                            setState(
+                                    () => _obscureConfirmPassword = !_obscureConfirmPassword);
                           },
                         ),
                       ),
@@ -268,6 +281,26 @@ class _SocialButton extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Wrapper to show InterestSelectionPage and navigate to MainShell after selection
+class InterestsSelectionPageWrapper extends StatelessWidget {
+  final UserProvider userProvider;
+
+  const InterestsSelectionPageWrapper({required this.userProvider, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return InterestsSelectionPage(
+      onCompleted: () async {
+        // Save selected interests via UserProvider
+        await userProvider.updateInterests(userProvider.selectedInterests);
+
+        // Navigate to MainShell after saving interests
+        Navigator.of(context).pushReplacementNamed(MainShell.routeName);
+      },
     );
   }
 }

@@ -5,8 +5,10 @@ import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/primary_button.dart';
 import '../onboarding/onboarding_page.dart';
+import '../auth/interests_selection_page.dart';
 import '../../navigation/main_shell.dart';
 
 class AuthPage extends StatefulWidget {
@@ -55,6 +57,7 @@ class _AuthPageState extends State<AuthPage> {
     }
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
     final success = _isLogin
         ? await authProvider.login(_emailController.text, _passwordController.text)
         : await authProvider.register(
@@ -64,11 +67,33 @@ class _AuthPageState extends State<AuthPage> {
 
     if (!mounted) return;
 
-    if (success && authProvider.userModel != null) {
-      Navigator.of(context).pushReplacementNamed(
-        MainShell.routeName,
-        arguments: {'user': authProvider.userModel},
-      );
+    final user = authProvider.userModel;
+
+    if (success && user != null) {
+      final needsInterests = (user.interests.isEmpty);
+
+      if (needsInterests) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => InterestsSelectionPage(
+              onCompleted: () async {
+                await userProvider.loadProfile();
+                await authProvider.refreshUser();
+                if (!mounted) return;
+                Navigator.of(context).pushReplacementNamed(
+                  MainShell.routeName,
+                  arguments: {'user': authProvider.userModel},
+                );
+              },
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacementNamed(
+          MainShell.routeName,
+          arguments: {'user': user},
+        );
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

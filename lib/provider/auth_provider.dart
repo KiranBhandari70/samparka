@@ -95,17 +95,26 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      // API call
       final response = await _authService.register(
         email: email,
         password: password,
         name: name,
         phone: phone,
       );
-      // Backend returns { success: true, user: {...}, token: "..." }
-      _userData = response['user'] ?? response;
+
+      if (response == null || response['success'] != true) {
+        throw Exception("Registration failed");
+      }
+
+      // Save user & token
+      _userData = response['user'];
       _isAuthenticated = true;
+
+      // Notify listeners
       _setLoading(false);
       notifyListeners();
+
       return true;
     } catch (e) {
       _setError(e.toString());
@@ -114,6 +123,7 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+
 
   Future<void> logout() async {
     _setLoading(true);
