@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:samparka/presentation/pages/settings/about_samparka.dart';
+import 'package:samparka/presentation/pages/settings/help_center_screen.dart';
 
 import 'core/constants/strings.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/permission_helper.dart';
-import 'data/models/category_model.dart';
 import 'data/models/event_model.dart';
 import 'data/models/group_model.dart';
 import 'data/models/user_model.dart';
@@ -18,6 +19,8 @@ import 'presentation/pages/auth/auth_page.dart';
 import 'presentation/pages/auth/interests_selection_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/pages/settings/settings_page.dart';
+import 'presentation/pages/settings/privacy_security_screen.dart'; // New screen
+import 'presentation/pages/settings/terms_privacy_screen.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/home/event_detail_page.dart';
 import 'presentation/pages/groups/group_chat_page.dart';
@@ -88,22 +91,15 @@ class _SamparkaAppState extends State<SamparkaApp> {
               final args = settings.arguments as Map<String, dynamic>?;
               final user = args?['user'] as UserModel?;
               return MaterialPageRoute(
-                builder: (_) => user != null
-                    ? MainShell(user: user)
-                    : const SplashPage(),
+                builder: (_) => user != null ? MainShell(user: user) : const SplashPage(),
               );
 
             case InterestsSelectionPage.routeName:
               return MaterialPageRoute(
                 builder: (context) => InterestsSelectionPage(
                   onCompleted: () async {
-                    // Get the UserProvider
                     final userProvider = Provider.of<UserProvider>(context, listen: false);
-
-                    // Update the selected interests
                     await userProvider.updateInterests(userProvider.selectedInterests);
-
-                    // Navigate to the MainShell (home page) with the current user
                     final currentUser = userProvider.currentUser;
                     if (currentUser != null) {
                       Navigator.of(context).pushReplacement(
@@ -115,7 +111,6 @@ class _SamparkaAppState extends State<SamparkaApp> {
                   },
                 ),
               );
-
 
             case EventDetailPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
@@ -183,6 +178,19 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case BusinessPartnersPage.routeName:
               return MaterialPageRoute(builder: (_) => const BusinessPartnersPage());
+
+            case TermsPrivacyScreen.routeName:
+              return MaterialPageRoute(builder: (_) => const TermsPrivacyScreen());
+
+            case PrivacySecurityScreen.routeName:
+              return MaterialPageRoute(builder: (_) => const PrivacySecurityScreen());
+
+            case AboutSamparkaScreen.routeName:
+              return MaterialPageRoute(builder: (_) => const AboutSamparkaScreen());
+
+            case HelpCenterScreen.routeName:
+              return MaterialPageRoute(builder: (_) => const HelpCenterScreen());
+
 
             default:
               return MaterialPageRoute(builder: (_) => const SplashPage());

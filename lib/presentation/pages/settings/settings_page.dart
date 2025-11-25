@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
 import '../profile/edit_profile_page.dart';
+import 'about_samparka.dart';
+import 'privacy_security_screen.dart'; // New Privacy & Security page
+import 'terms_privacy_screen.dart';
+import 'help_center_screen.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
-
   static const String routeName = '/settings';
 
   @override
@@ -29,7 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: [
-          // Account Section
+          // ACCOUNT SECTION
           _SettingsSection(
             title: 'Account',
             items: [
@@ -43,12 +47,15 @@ class _SettingsPageState extends State<SettingsPage> {
               SettingsItem(
                 icon: Icons.lock_rounded,
                 title: 'Privacy and Security',
+                onTap: () {
+                  Navigator.pushNamed(context, PrivacySecurityScreen.routeName);
+                },
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Notifications Section
+          // NOTIFICATIONS SECTION
           _SettingsSection(
             title: 'Notifications',
             items: [
@@ -68,27 +75,36 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 24),
 
-          // Support Section
+          // SUPPORT SECTION
           _SettingsSection(
             title: 'Support',
             items: [
               SettingsItem(
-                icon: Icons.help_center_rounded,
+                icon: Icons.help,
                 title: 'Help Center',
+                onTap: () {
+                  Navigator.pushNamed(context, HelpCenterScreen.routeName);
+                },
               ),
               SettingsItem(
-                icon: Icons.info_rounded,
+                icon: Icons.info,
                 title: 'About Samparka',
+                onTap: () {
+                  Navigator.pushNamed(context, AboutSamparkaScreen.routeName);
+                },
               ),
               SettingsItem(
-                icon: Icons.description_rounded,
+                icon: Icons.description,
                 title: 'Terms of Service and Privacy',
+                onTap: () {
+                  Navigator.pushNamed(context, TermsPrivacyScreen.routeName);
+                },
               ),
             ],
           ),
           const SizedBox(height: 24),
 
-          // Logout Button
+          // LOGOUT BUTTON
           Consumer<AuthProvider>(
             builder: (context, authProvider, child) {
               return Container(
@@ -99,17 +115,14 @@ class _SettingsPageState extends State<SettingsPage> {
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Logout'),
-                        content:
-                        const Text('Are you sure you want to logout?'),
+                        content: const Text('Are you sure you want to logout?'),
                         actions: [
                           TextButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(false),
+                            onPressed: () => Navigator.of(context).pop(false),
                             child: const Text('Cancel'),
                           ),
                           ElevatedButton(
-                            onPressed: () =>
-                                Navigator.of(context).pop(true),
+                            onPressed: () => Navigator.of(context).pop(true),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
                               foregroundColor: Colors.white,
