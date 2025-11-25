@@ -19,7 +19,7 @@ import 'presentation/pages/auth/auth_page.dart';
 import 'presentation/pages/auth/interests_selection_page.dart';
 import 'presentation/pages/onboarding/onboarding_page.dart';
 import 'presentation/pages/settings/settings_page.dart';
-import 'presentation/pages/settings/privacy_security_screen.dart'; // New screen
+import 'presentation/pages/settings/privacy_security_screen.dart';
 import 'presentation/pages/settings/terms_privacy_screen.dart';
 import 'presentation/pages/splash/splash_page.dart';
 import 'presentation/pages/home/event_detail_page.dart';
@@ -103,9 +103,7 @@ class _SamparkaAppState extends State<SamparkaApp> {
                     final currentUser = userProvider.currentUser;
                     if (currentUser != null) {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => MainShell(user: currentUser),
-                        ),
+                        MaterialPageRoute(builder: (_) => MainShell(user: currentUser)),
                       );
                     }
                   },
@@ -122,6 +120,18 @@ class _SamparkaAppState extends State<SamparkaApp> {
               final args = settings.arguments as GroupChatArgs?;
               if (args == null) return MaterialPageRoute(builder: (_) => const SplashPage());
               return MaterialPageRoute(builder: (_) => GroupChatPage(group: args.group));
+
+            case GroupDetailPage.routeName:
+              final args = settings.arguments;
+              if (args is! GroupModel) return MaterialPageRoute(builder: (_) => const SplashPage());
+              final group = args;
+              return MaterialPageRoute(builder: (_) => GroupDetailPage(group: group));
+
+            case GroupsListPage.routeName:
+              return MaterialPageRoute(builder: (_) => const GroupsListPage());
+
+            case CreateGroupPage.routeName:
+              return MaterialPageRoute(builder: (_) => const CreateGroupPage());
 
             case SettingsPage.routeName:
               return MaterialPageRoute(builder: (_) => const SettingsPage());
@@ -148,18 +158,6 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case PartnerBusinessesPage.routeName:
               return MaterialPageRoute(builder: (_) => const PartnerBusinessesPage());
-
-            case GroupDetailPage.routeName:
-              final args = settings.arguments as Map<String, dynamic>?;
-              final group = args?['group'] as GroupModel?;
-              if (group == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-              return MaterialPageRoute(builder: (_) => GroupDetailPage(group: group));
-
-            case GroupsListPage.routeName:
-              return MaterialPageRoute(builder: (_) => const GroupsListPage());
-
-            case CreateGroupPage.routeName:
-              return MaterialPageRoute(builder: (_) => const CreateGroupPage());
 
             case AdminDashboardPage.routeName:
               return MaterialPageRoute(builder: (_) => const AdminDashboardPage());
@@ -190,7 +188,6 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case HelpCenterScreen.routeName:
               return MaterialPageRoute(builder: (_) => const HelpCenterScreen());
-
 
             default:
               return MaterialPageRoute(builder: (_) => const SplashPage());

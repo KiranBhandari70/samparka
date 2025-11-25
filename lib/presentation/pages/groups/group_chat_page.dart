@@ -27,9 +27,11 @@ class GroupChatPage extends StatefulWidget {
 class _GroupChatPageState extends State<GroupChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  /// ✅ Correct membership check
   bool _userIsMember(GroupProvider provider, String userId) {
     final selectedGroup = provider.selectedGroup ?? widget.group;
-    return userId.isNotEmpty && selectedGroup.members.contains(userId);
+    return userId.isNotEmpty && selectedGroup.isMember(userId);
   }
 
   @override
@@ -137,8 +139,7 @@ class _GroupChatPageState extends State<GroupChatPage> {
               builder: (context, groupProvider, child) {
                 final selectedGroup = groupProvider.selectedGroup ?? widget.group;
                 final messages = groupProvider.messages;
-                final isMember = currentUserId.isNotEmpty &&
-                    selectedGroup.members.contains(currentUserId);
+                final isMember = selectedGroup.isMember(currentUserId);
 
                 if (!isMember) {
                   return Center(
@@ -147,12 +148,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock_outline, size: 48, color: AppColors.primary),
+                          const Icon(Icons.lock_outline,
+                              size: 48, color: AppColors.primary),
                           const SizedBox(height: 12),
                           Text(
                             'Join this group to participate in the chat.',
                             textAlign: TextAlign.center,
-                            style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                            style: AppTextStyles.body
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -177,7 +180,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
@@ -194,12 +198,14 @@ class _GroupChatPageState extends State<GroupChatPage> {
           // Input field
           Consumer<GroupProvider>(
             builder: (context, groupProvider, child) {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final authProvider =
+              Provider.of<AuthProvider>(context, listen: false);
               final currentUserId = authProvider.userModel?.id ?? '';
               final canChat = _userIsMember(groupProvider, currentUserId);
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -238,9 +244,8 @@ class _GroupChatPageState extends State<GroupChatPage> {
                           controller: _messageController,
                           enabled: canChat,
                           decoration: InputDecoration(
-                            hintText: canChat
-                                ? 'Type a message...'
-                                : 'Join the group to chat',
+                            hintText:
+                            canChat ? 'Type a message...' : 'Join the group to chat',
                             border: InputBorder.none,
                           ),
                           onSubmitted: (_) => _sendMessage(),
@@ -256,15 +261,18 @@ class _GroupChatPageState extends State<GroupChatPage> {
                       child: IconButton(
                         icon: groupProvider.isLoading
                             ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
                             : const Icon(Icons.send_rounded, color: Colors.white),
-                        onPressed: (!canChat || groupProvider.isLoading) ? null : _sendMessage,
+                        onPressed: (!canChat || groupProvider.isLoading)
+                            ? null
+                            : _sendMessage,
                       ),
                     ),
                   ],
@@ -273,42 +281,6 @@ class _GroupChatPageState extends State<GroupChatPage> {
             },
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ----------------------------
-// Date Label Widget
-// ----------------------------
-class _ChatDateLabel extends StatelessWidget {
-  final String label;
-
-  const _ChatDateLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 16,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
       ),
     );
   }
@@ -411,7 +383,6 @@ class _MessageBubble extends StatelessWidget {
   }
 
   String _formatTime(DateTime dateTime) {
-    // Simple formatting: hh:mm AM/PM
     return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

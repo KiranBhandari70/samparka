@@ -5,7 +5,7 @@ class Environment {
   // For production, use: https://api.samparka.com
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue:'http://10.10.8.168:5000'
+    defaultValue:'http://192.168.1.124:5000'
     // 'https://samparka-n7ps.onrender.com', // Change to your backend URL
   );
 

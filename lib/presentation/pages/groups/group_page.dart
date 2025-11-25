@@ -11,7 +11,7 @@ import 'create_group_page.dart';
 
 class GroupPage extends StatelessWidget {
   final List<GroupModel> groups; // Groups from backend
-  final String currentUserId; // Pass current user id here
+  final String currentUserId; // Current logged in user ID
 
   const GroupPage({
     super.key,
@@ -46,7 +46,8 @@ class GroupPage extends StatelessWidget {
                   const Spacer(),
                   IconButton(
                     onPressed: () {
-                      Navigator.of(context).pushNamed(CreateGroupPage.routeName);
+                      Navigator.of(context)
+                          .pushNamed(CreateGroupPage.routeName);
                     },
                     icon: const Icon(
                       Icons.add_circle_rounded,
@@ -103,6 +104,7 @@ class GroupPage extends StatelessWidget {
     );
   }
 
+  // Open Group Chat Page
   void _openChat(BuildContext context, GroupModel group) {
     Navigator.of(context).pushNamed(
       GroupChatPage.routeName,
@@ -110,14 +112,16 @@ class GroupPage extends StatelessWidget {
     );
   }
 
+  // Open Group Detail Page
   void _openDetails(BuildContext context, GroupModel group) {
     Navigator.of(context).pushNamed(
       GroupDetailPage.routeName,
-      arguments: {'group': group},
+      arguments: group, // Pass GroupModel directly
     );
   }
 }
 
+/// Section Title Widget
 class _SectionTitle extends StatelessWidget {
   final String title;
   final IconData icon;

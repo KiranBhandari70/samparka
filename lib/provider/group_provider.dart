@@ -32,8 +32,13 @@ class GroupProvider extends ChangeNotifier {
 
     try {
       _groups = await _groupService.getGroups();
-      _myGroups = [];
-      _suggestedGroups = _groups;
+
+      // Filter groups where the user is a member
+      _myGroups = _groups.where((g) => g.isMember == true).toList();
+
+      // Suggested groups = groups the user is NOT in
+      _suggestedGroups = _groups.where((g) => g.isMember != true).toList();
+
       _setLoading(false);
       notifyListeners();
     } catch (e) {
@@ -42,6 +47,7 @@ class GroupProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 
   Future<void> loadGroupDetails(String id) async {
     _setLoading(true);
@@ -61,13 +67,18 @@ class GroupProvider extends ChangeNotifier {
     }
   }
 
+
+
   Future<bool> joinGroup(String id) async {
     _setLoading(true);
     _clearError();
 
     try {
       await _groupService.joinGroup(id);
-      await loadGroups();
+
+      await loadGroups();           // Reload all groups
+      await loadGroupDetails(id);   // 🔥 Reload the selected group with updated members
+
       _setLoading(false);
       notifyListeners();
       return true;
@@ -78,6 +89,7 @@ class GroupProvider extends ChangeNotifier {
       return false;
     }
   }
+
 
   Future<bool> leaveGroup(String id) async {
     _setLoading(true);
@@ -164,4 +176,25 @@ class GroupProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+  Future<void> fetchGroupById(String id) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      _selectedGroup = await _groupService.getGroupById(id);
+
+      if (_selectedGroup != null) {
+        _messages = await _groupService.getMessages(id);
+      }
+
+      _setLoading(false);
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+
 }

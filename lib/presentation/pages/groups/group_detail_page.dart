@@ -4,12 +4,12 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/group_model.dart';
-import '../../../provider/auth_provider.dart';
 import '../../../provider/group_provider.dart';
+import '../../../provider/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 import 'group_chat_page.dart';
 
-class GroupDetailPage extends StatefulWidget {
+class GroupDetailPage extends StatelessWidget {
   final GroupModel group;
 
   const GroupDetailPage({super.key, required this.group});
@@ -17,252 +17,178 @@ class GroupDetailPage extends StatefulWidget {
   static const String routeName = '/group-detail';
 
   @override
-  State<GroupDetailPage> createState() => _GroupDetailPageState();
-}
-
-class _GroupDetailPageState extends State<GroupDetailPage> {
-  GroupModel? _group;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDetails();
-    });
-  }
-
-  Future<void> _loadDetails() async {
-    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
-    await groupProvider.loadGroupDetails(widget.group.id);
-    if (!mounted) return;
-    setState(() {
-      _group = groupProvider.selectedGroup ?? widget.group;
-      _isLoading = false;
-    });
-  }
-
-  GroupModel get group => _group ?? widget.group;
-
-  @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final currentUserId = authProvider.userModel?.id ?? '';
-    final isMember = currentUserId.isNotEmpty && group.members.contains(currentUserId);
-
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Group Details'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadDetails,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Image.network(
-                group.imageUrlOrPlaceholder,
-                height: 220,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 220,
-                    color: AppColors.border,
-                    child: const Icon(
-                      Icons.groups_rounded,
-                      size: 60,
-                      color: AppColors.textMuted,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(group.name, style: AppTextStyles.heading2),
-            const SizedBox(height: 8),
-            Text(
-              'Created ${_formatDate(group.createdAt)}',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 16),
-            if (group.description.isNotEmpty) ...[
-              Text('About', style: AppTextStyles.heading3),
-              const SizedBox(height: 8),
-              Text(
-                group.description,
-                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+      appBar: AppBar(title: const Text('Group Details')),
+      body: Consumer<GroupProvider>(
+        builder: (context, groupProvider, _) {
+          // Always use updated group if selectedGroup matches ID
+          final currentGroup = groupProvider.selectedGroup?.id == group.id
+              ? groupProvider.selectedGroup!
+              : group;
+
+          final isMember = currentGroup.isMember(currentUserId);
+
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              /// GROUP IMAGE
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Image.network(
+                  currentGroup.imageUrlOrPlaceholder,
+                  height: 220,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _placeholderImage(),
+                ),
               ),
               const SizedBox(height: 24),
-            ],
-            Text('Keywords', style: AppTextStyles.heading3),
-            const SizedBox(height: 12),
-            if (group.keywords.isEmpty)
+
+              /// TITLE
+              Text(currentGroup.name, style: AppTextStyles.heading2),
+              const SizedBox(height: 8),
               Text(
-                'No keywords added.',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
-              )
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: group.keywords
-                    .map(
-                      (keyword) => Chip(
-                        label: Text('#$keyword'),
-                        backgroundColor: AppColors.primary.withOpacity(0.08),
-                        labelStyle: AppTextStyles.caption.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                    .toList(),
+                'Created ${_formatDate(currentGroup.createdAt)}',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
               ),
-            const SizedBox(height: 24),
-            Text('Stats', style: AppTextStyles.heading3),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _StatBadge(
-                  icon: Icons.people_alt_rounded,
-                  label: 'Members',
-                  value: '${group.memberCount}',
-                ),
-                const SizedBox(width: 12),
-                _StatBadge(
-                  icon: Icons.person,
-                  label: 'Admin',
-                  value: group.createdByName ?? 'Unknown',
-                ),
+              const SizedBox(height: 16),
+
+              /// DESCRIPTION
+              if (currentGroup.description.isNotEmpty) ...[
+                Text('About', style: AppTextStyles.heading3),
+                const SizedBox(height: 8),
+                Text(currentGroup.description,
+                    style: AppTextStyles.body.copyWith(color: AppColors.textSecondary)),
+                const SizedBox(height: 24),
               ],
-            ),
-            const SizedBox(height: 24),
-            PrimaryButton(
-              label: 'Chat',
-              onPressed: () => _handleChatAction(isMember),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: _loadDetails,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
+
+              /// KEYWORDS
+              Text('Keywords', style: AppTextStyles.heading3),
+              const SizedBox(height: 12),
+              if (currentGroup.keywords.isEmpty)
+                Text('No keywords added.',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMuted))
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: currentGroup.keywords
+                      .map((k) => Chip(
+                    label: Text('#$k'),
+                    backgroundColor: AppColors.primary.withOpacity(0.08),
+                    labelStyle: AppTextStyles.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ))
+                      .toList(),
+                ),
+              const SizedBox(height: 24),
+
+              /// ADMIN
+              Text('Admin', style: AppTextStyles.heading3),
+              const SizedBox(height: 12),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 4,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 24,
+                    backgroundImage: currentGroup.createdByPhotoUrl != null
+                        ? NetworkImage(currentGroup.createdByPhotoUrl!)
+                        : null,
+                    child: currentGroup.createdByPhotoUrl == null
+                        ? const Icon(Icons.person, size: 28)
+                        : null,
+                  ),
+                  title: Text(currentGroup.createdByName ?? 'Unknown Admin',
+                      style: AppTextStyles.heading3),
+                  subtitle: const Text('Group Creator'),
+                ),
               ),
-              child: const Text('Refresh Details'),
-            ),
-          ],
-        ),
+              const SizedBox(height: 24),
+
+              /// MEMBERS SECTION
+              Text('Members (${currentGroup.memberCount})',
+                  style: AppTextStyles.heading3),
+              const SizedBox(height: 12),
+              Column(
+                children: currentGroup.membersData.map((member) {
+                  return Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 2,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        radius: 20,
+                        backgroundImage: member.fullAvatarUrl != null
+                            ? NetworkImage(member.fullAvatarUrl!)
+                            : null,
+                        child: member.fullAvatarUrl == null
+                            ? const Icon(Icons.person, size: 24)
+                            : null,
+                      ),
+                      title: Text(member.name, style: AppTextStyles.body),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
+              /// JOIN / CHAT BUTTON
+              PrimaryButton(
+                label: isMember ? 'Chat' : 'Join Group',
+                onPressed: () async {
+                  if (!isMember) {
+                    final joined = await groupProvider.joinGroup(currentGroup.id);
+
+                    if (joined) {
+                      // Fetch updated group data with correct member list
+                      await groupProvider.fetchGroupById(currentGroup.id);
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Joined ${currentGroup.name}!'),
+                            backgroundColor: Colors.green),
+                      );
+                    }
+                  }
+
+                  // Navigate to chat ONLY if user is now a member
+                  final updatedGroup = groupProvider.selectedGroup ?? currentGroup;
+
+                  if (updatedGroup.isMember(currentUserId)) {
+                    Navigator.pushNamed(
+                      context,
+                      GroupChatPage.routeName,
+                      arguments: GroupChatArgs(group: updatedGroup),
+                    );
+                  }
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Future<void> _handleChatAction(bool isMember) async {
-    if (!isMember) {
-      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
-      final success = await groupProvider.joinGroup(group.id);
-      if (!mounted) return;
-
-      if (!success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(groupProvider.error ?? 'Failed to join group'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      await _loadDetails();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Joined ${group.name}!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-
-    if (!mounted) return;
-    _openChat(group);
-  }
-
-  void _openChat(GroupModel group) {
-    Navigator.of(context).pushNamed(
-      GroupChatPage.routeName,
-      arguments: GroupChatArgs(group: group),
+  Widget _placeholderImage() {
+    return Container(
+      height: 220,
+      color: AppColors.border,
+      child: const Icon(Icons.groups_rounded, size: 60, color: AppColors.textMuted),
     );
   }
 
   String _formatDate(DateTime dateTime) {
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
     ];
     return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}';
   }
 }
-
-class _StatBadge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _StatBadge({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 12,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: AppColors.primary),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: AppTextStyles.heading3.copyWith(color: AppColors.primary),
-            ),
-            const SizedBox(height: 4),
-            Text(label, style: AppTextStyles.caption),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
