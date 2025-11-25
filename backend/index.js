@@ -14,6 +14,7 @@ import eventRoutes from './routes/eventRoutes.js';
 import groupRoutes from './routes/groupRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
+import esewaRoutes from './routes/esewaRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,7 @@ app.use('/api/v1/groups', groupRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/esewa', esewaRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);

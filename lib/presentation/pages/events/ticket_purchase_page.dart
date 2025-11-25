@@ -1,8 +1,6 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-
+import 'package:esewa_flutter/esewa_flutter.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
@@ -23,6 +21,9 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   int _ticketCount = 1;
   late TicketTier _selectedTier;
 
+  String paymentData = '';
+  String paymentError = '';
+
   @override
   void initState() {
     super.initState();
@@ -35,14 +36,44 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   double get _totalPrice => _selectedTier.price * _ticketCount;
 
   void _payWithESewa() {
-    final amount = _totalPrice.toStringAsFixed(2);
-    final esewaUrl =
-        "https://uat.esewa.com.np/epay/main?amt=$amount&pid=${widget.event.id}&scd=EPAYTEST&su=https://your-success-url.com&fu=https://your-failure-url.com";
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ESewaWebViewPage(paymentUrl: esewaUrl),
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Complete Payment"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EsewaPayButton(
+              paymentConfig: ESewaConfig.dev(
+                amount: _totalPrice,
+                successUrl: 'https://developer.esewa.com.np/success',
+                failureUrl: 'https://developer.esewa.com.np/failure',
+                secretKey: '8gBm/:&EnhH.1/q', // replace with your actual key
+              ),
+              width: double.infinity,
+              onSuccess: (result) {
+                setState(() {
+                  paymentData = result.data!;
+                  paymentError = '';
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Payment Successful")),
+                );
+              },
+              onFailure: (result) {
+                setState(() {
+                  paymentError = result;
+                  paymentData = '';
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Payment Failed")),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -106,6 +137,13 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                       ticketCount: _ticketCount,
                       totalPrice: _totalPrice,
                     ),
+                    const SizedBox(height: 24),
+                    if (paymentData.isNotEmpty)
+                      Text("Payment Success Data: $paymentData",
+                          style: const TextStyle(color: Colors.green)),
+                    if (paymentError.isNotEmpty)
+                      Text("Payment Error: $paymentError",
+                          style: const TextStyle(color: Colors.red)),
                   ],
                 ),
               ),
@@ -223,7 +261,7 @@ class _PriceBreakdown extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("Ticket Price"),
-              Text("\$${ticketPrice.toStringAsFixed(2)}"),
+              Text("\NRs.${ticketPrice.toStringAsFixed(2)}"),
             ],
           ),
           const SizedBox(height: 8),
@@ -240,7 +278,7 @@ class _PriceBreakdown extends StatelessWidget {
             children: [
               const Text("Total", style: TextStyle(fontWeight: FontWeight.bold)),
               Text(
-                "\$${totalPrice.toStringAsFixed(2)}",
+                "\NRs.${totalPrice.toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -250,52 +288,6 @@ class _PriceBreakdown extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ---------------------- eSewa WebView ----------------------
-class ESewaWebViewPage extends StatefulWidget {
-  final String paymentUrl;
-
-  const ESewaWebViewPage({super.key, required this.paymentUrl});
-
-  @override
-  State<ESewaWebViewPage> createState() => _ESewaWebViewPageState();
-}
-
-class _ESewaWebViewPageState extends State<ESewaWebViewPage> {
-  late final WebViewController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onNavigationRequest: (nav) {
-            if (nav.url.contains("success")) {
-              Navigator.pop(context); // Payment success
-            } else if (nav.url.contains("failure")) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Payment failed")),
-              );
-              Navigator.pop(context);
-            }
-            return NavigationDecision.navigate;
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.paymentUrl));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("eSewa Payment")),
-      body: WebViewWidget(controller: _controller),
     );
   }
 }
