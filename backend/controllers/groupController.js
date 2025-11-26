@@ -113,7 +113,7 @@ export const getGroup = async (req, res, next) => {
 // @access  Private
 export const createGroup = async (req, res, next) => {
   try {
-    const { name, keywords: keywordsInput } = req.body;
+    const { name, description: rawDescription, keywords: keywordsInput } = req.body;
 
     // 1️⃣ Validate required fields
     if (!name || name.trim().length === 0) {
@@ -126,6 +126,11 @@ export const createGroup = async (req, res, next) => {
       createdBy: req.user._id,
       members: [req.user._id], // creator is automatically a member
     };
+
+    const description = typeof rawDescription === 'string' ? rawDescription.trim() : '';
+    if (description.length > 0) {
+      groupData.description = description;
+    }
 
     // 3️⃣ Handle keywords
     const keywords = parseKeywords(keywordsInput);
@@ -194,6 +199,10 @@ export const updateGroup = async (req, res, next) => {
     }
 
     if (req.file) req.body.imageUrl = getImageUrl(req.file);
+
+    if (typeof req.body.description === 'string') {
+      req.body.description = req.body.description.trim();
+    }
 
     group = await Group.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
       .populate('createdBy', 'name email avatarUrl')
