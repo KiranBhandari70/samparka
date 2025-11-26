@@ -1,7 +1,9 @@
 import Payment from '../models/paymentModel.js';
 import Event from '../models/Event.js';
+import User from '../models/User.js';
 import axios from 'axios';
 import { config } from '../config/env.js';
+import RewardService from '../services/rewardService.js';
 
 const ESEWA_MERCHANT_CODE = config.esewaMerchantCode;
 const ESEWA_VERIFY_URL = config.esewaVerifyUrl;
@@ -79,7 +81,7 @@ export const createPayment = async (req, res) => {
     await payment.save();
     console.log('Payment status updated');
 
-    // 4️⃣ Update event attendees and attendeeDetails
+    // 4️⃣ Update event attendees and attendeeDetails + Add reward points
     if (success) {
       console.log('Payment successful, updating event attendees...');
       const event = await Event.findById(eventId);
@@ -100,6 +102,32 @@ export const createPayment = async (req, res) => {
 
         await event.save();
         console.log('Event updated with attendee details');
+
+        // 5️⃣ Add reward points (0.5% of ticket cost)
+        try {
+          const rewardPoints = RewardService.calculateTicketRewardPoints(amount);
+          console.log(`Calculating reward points: ${amount} * 0.5% = ${rewardPoints} points`);
+          
+          if (rewardPoints > 0) {
+            const rewardResult = await RewardService.addRewardPoints(
+              userId,
+              rewardPoints,
+              'ticket_purchase',
+              `Earned ${rewardPoints} points for purchasing ${ticketCount} ${tierLabel} ticket(s) for ${event.title}`,
+              {
+                ticketAmount: amount,
+                ticketCount,
+                tierLabel,
+              }
+            );
+            
+            console.log(`Reward points added: ${rewardPoints}, new balance: ${rewardResult.newBalance}`);
+            payment.rewardPointsEarned = rewardPoints; // Add this field to payment record
+          }
+        } catch (rewardError) {
+          console.error('Error adding reward points:', rewardError);
+          // Don't fail the payment if reward points fail
+        }
       } else {
         console.error('Event not found:', eventId);
       }

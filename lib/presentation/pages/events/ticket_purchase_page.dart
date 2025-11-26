@@ -9,6 +9,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
 import '../../../config/environment.dart';
+import '../../../data/services/reward_service.dart';
 
 class TicketPurchasePage extends StatefulWidget {
   final EventModel event;
@@ -45,6 +46,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   }
 
   double get _totalPrice => _selectedTier.price * _ticketCount;
+  int get _rewardPoints => RewardService.calculateRewardPoints(_totalPrice);
 
   /// Save payment to backend
   Future<void> _savePaymentToBackend(String referenceId) async {
@@ -169,7 +171,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                         return DropdownMenuItem(
                           value: tier,
                           child: Text(
-                            "${tier.label} - ${tier.price.toStringAsFixed(2)} ${tier.currency}",
+                            "${tier.label} - NPR ${tier.price.toStringAsFixed(2)}",
                           ),
                         );
                       }).toList(),
@@ -202,6 +204,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                       ticketPrice: _selectedTier.price,
                       ticketCount: _ticketCount,
                       totalPrice: _totalPrice,
+                      rewardPoints: _rewardPoints,
                     ),
                     const SizedBox(height: 24),
                     if (paymentData.isNotEmpty)
@@ -326,11 +329,13 @@ class _PriceBreakdown extends StatelessWidget {
   final double ticketPrice;
   final int ticketCount;
   final double totalPrice;
+  final int rewardPoints;
 
   const _PriceBreakdown({
     required this.ticketPrice,
     required this.ticketCount,
     required this.totalPrice,
+    required this.rewardPoints,
   });
 
   @override
@@ -364,7 +369,7 @@ class _PriceBreakdown extends StatelessWidget {
             children: [
               const Text("Total", style: TextStyle(fontWeight: FontWeight.bold)),
               Text(
-                "\NRs.${totalPrice.toStringAsFixed(2)}",
+                "NPR ${totalPrice.toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
@@ -372,6 +377,45 @@ class _PriceBreakdown extends StatelessWidget {
               ),
             ],
           ),
+          if (rewardPoints > 0) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accentGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.stars,
+                        color: AppColors.accentGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "You'll earn",
+                        style: TextStyle(
+                          color: AppColors.accentGreen,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    "$rewardPoints points",
+                    style: TextStyle(
+                      color: AppColors.accentGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

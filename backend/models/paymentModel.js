@@ -9,6 +9,7 @@ const paymentSchema = new mongoose.Schema({
   ticketCount: { type: Number, default: 1 },
   tierLabel: { type: String },
   status: { type: String, enum: ["pending", "success", "failed"], default: "pending" },
+  rewardPointsEarned: { type: Number, default: 0 },
 }, { timestamps: true });
 
 export default mongoose.model("Payment", paymentSchema);

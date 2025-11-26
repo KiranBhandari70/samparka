@@ -13,6 +13,7 @@ import 'provider/auth_provider.dart';
 import 'provider/event_provider.dart';
 import 'provider/group_provider.dart';
 import 'provider/user_provider.dart';
+import 'provider/reward_provider.dart';
 
 import 'presentation/navigation/main_shell.dart';
 import 'presentation/pages/auth/auth_page.dart';
@@ -65,12 +66,13 @@ class _SamparkaAppState extends State<SamparkaApp> {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => EventProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => GroupProvider()),
-      ],
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => EventProvider()),
+          ChangeNotifierProvider(create: (_) => UserProvider()),
+          ChangeNotifierProvider(create: (_) => GroupProvider()),
+          ChangeNotifierProvider(create: (_) => RewardProvider()),
+        ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,

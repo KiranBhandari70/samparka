@@ -1,13 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../provider/auth_provider.dart';
+import '../../../provider/reward_provider.dart';
+import '../../../data/models/reward_transaction_model.dart';
 import '../../widgets/primary_button.dart';
 
-class RewardsDashboardPage extends StatelessWidget {
+class RewardsDashboardPage extends StatefulWidget {
   const RewardsDashboardPage({super.key});
 
   static const String routeName = '/rewards-dashboard';
+
+  @override
+  State<RewardsDashboardPage> createState() => _RewardsDashboardPageState();
+}
+
+class _RewardsDashboardPageState extends State<RewardsDashboardPage> {
+  @override
+  void initState() {
+    super.initState();
+    _loadRewardData();
+  }
+
+  Future<void> _loadRewardData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final rewardProvider = Provider.of<RewardProvider>(context, listen: false);
+    
+    final userId = authProvider.currentUserId;
+    if (userId != null && userId.isNotEmpty) {
+      await rewardProvider.loadRewardDashboard(userId);
+    }
+  }
+
+  Future<void> _refreshData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final rewardProvider = Provider.of<RewardProvider>(context, listen: false);
+    
+    final userId = authProvider.currentUserId;
+    if (userId != null && userId.isNotEmpty) {
+      await rewardProvider.refreshData(userId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,16 +51,49 @@ class RewardsDashboardPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Rewards Dashboard'),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _BalanceCard(
-                balance: 2450,
-                pointsEarnedThisMonth: 320,
+      body: Consumer<RewardProvider>(
+        builder: (context, rewardProvider, child) {
+          if (rewardProvider.isLoading && rewardProvider.dashboardData == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (rewardProvider.error != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Error loading rewards data',
+                    style: AppTextStyles.heading3,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    rewardProvider.error!,
+                    style: AppTextStyles.body,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadRewardData,
+                    child: const Text('Retry'),
+                  ),
+                ],
               ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _BalanceCard(
+                    balance: rewardProvider.currentBalance,
+                    pointsEarnedThisMonth: rewardProvider.monthlyEarned,
+                  ),
               const SizedBox(height: 24),
               Text(
                 'How to Earn Points',
@@ -42,8 +110,8 @@ class RewardsDashboardPage extends StatelessWidget {
               _EarningMethodCard(
                 icon: Icons.shopping_bag,
                 title: 'Buy Tickets',
-                description: 'Earn 10 points for every dollar spent',
-                points: '+10/\$',
+                description: 'Earn 0.5% points for every NPR spent',
+                points: '+0.5%',
               ),
               const SizedBox(height: 12),
               _EarningMethodCard(
@@ -103,35 +171,55 @@ class RewardsDashboardPage extends StatelessWidget {
                 style: AppTextStyles.heading3,
               ),
               const SizedBox(height: 16),
-              _ActivityItem(
-                icon: Icons.add_circle,
-                title: 'Points Earned',
-                description: 'Attended Tech Meetup',
-                points: '+50',
-                date: '2 days ago',
-                isEarned: true,
+              if (rewardProvider.recentActivity.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          size: 48,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No recent activity',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Start earning points by purchasing event tickets!',
+                          style: AppTextStyles.caption,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ...rewardProvider.recentActivity.map((transaction) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ActivityItem(
+                    icon: transaction.isEarned ? Icons.add_circle : Icons.remove_circle,
+                    title: transaction.displayTitle,
+                    description: transaction.description,
+                    points: transaction.formattedAmount,
+                    date: transaction.timeAgo,
+                    isEarned: transaction.isEarned,
+                  ),
+                )).toList(),
+                ],
               ),
-              const SizedBox(height: 12),
-              _ActivityItem(
-                icon: Icons.remove_circle,
-                title: 'Points Redeemed',
-                description: 'Coffee Shop Discount',
-                points: '-500',
-                date: '5 days ago',
-                isEarned: false,
-              ),
-              const SizedBox(height: 12),
-              _ActivityItem(
-                icon: Icons.add_circle,
-                title: 'Points Earned',
-                description: 'Bought Event Tickets',
-                points: '+250',
-                date: '1 week ago',
-                isEarned: true,
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
