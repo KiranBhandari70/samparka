@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../models/event_comment_model.dart';
 import '../models/event_model.dart';
 import '../repositories/event_repository.dart';
 import '../repositories/user_repository.dart';
@@ -52,5 +53,17 @@ class EventService {
 
   Future<List<EventModel>> getUserEvents(String userId) async {
     return _userRepository.getUserEvents(userId);
+  }
+
+  Future<List<EventCommentModel>> getEventComments(String eventId) {
+    return _repository.getEventComments(eventId);
+  }
+
+  Future<EventCommentModel> addEventComment(String eventId, String content) {
+    return _repository.addEventComment(eventId, content);
+  }
+
+  Future<void> deleteEventComment(String eventId, String commentId) {
+    return _repository.deleteEventComment(eventId, commentId);
   }
 }

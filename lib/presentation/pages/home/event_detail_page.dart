@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../data/models/event_comment_model.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../provider/auth_provider.dart';
 import '../../../provider/event_provider.dart';
 import '../events/ticket_purchase_page.dart';
 
@@ -58,7 +60,9 @@ class _EventDetailPageState extends State<EventDetailPage> {
       );
     }
 
+    final eventProvider = context.watch<EventProvider>();
     final UserModel? host = event.host;
+    final commentCount = eventProvider.commentCountFor(event.id) ?? event.commentCount;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -246,7 +250,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                             children: [
                               Text('Comments', style: AppTextStyles.heading3),
                               Text(
-                                '${event.commentCount ?? 0}',
+                                '$commentCount',
                                 style: AppTextStyles.caption.copyWith(color: AppColors.primary),
                               ),
                             ],
@@ -445,40 +449,60 @@ class CommentsSection extends StatefulWidget {
 
 class _CommentsSectionState extends State<CommentsSection> {
   final TextEditingController _controller = TextEditingController();
-
-  List<CommentModel> comments = [];
+  bool _hasLoadedOnce = false;
 
   @override
   void initState() {
     super.initState();
-    _loadComments();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadComments();
+    });
   }
 
   Future<void> _loadComments() async {
-    setState(() {
-      comments = [];
-    });
+    await context.read<EventProvider>().loadEventComments(widget.eventId);
+    if (mounted && !_hasLoadedOnce) {
+      setState(() {
+        _hasLoadedOnce = true;
+      });
+    }
   }
 
   Future<void> _addComment() async {
-    if (_controller.text.trim().isEmpty) return;
+    final authProvider = context.read<AuthProvider>();
+    if (!authProvider.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login to add a comment')),
+      );
+      return;
+    }
 
-    final newComment = CommentModel(
-      id: DateTime.now().toString(),
-      userName: "Loading...",
-      avatarUrl: "",
-      comment: _controller.text.trim(),
-      timeAgo: "Just now",
-    );
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
 
-    setState(() {
-      comments.insert(0, newComment);
+    final success =
+        await context.read<EventProvider>().addEventComment(widget.eventId, text);
+
+    if (!mounted) return;
+    if (success) {
       _controller.clear();
-    });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to add comment')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final eventProvider = context.watch<EventProvider>();
+    final authProvider = context.watch<AuthProvider>();
+
+    final comments = eventProvider.commentsFor(widget.eventId);
+    final isLoading = eventProvider.isCommentsLoading(widget.eventId) && !_hasLoadedOnce;
+    final isPosting = eventProvider.isPostingComment(widget.eventId);
+    final canComment = authProvider.isAuthenticated && !isPosting;
+
     return Column(
       children: [
         Container(
@@ -492,49 +516,48 @@ class _CommentsSectionState extends State<CommentsSection> {
               Expanded(
                 child: TextField(
                   controller: _controller,
-                  decoration: const InputDecoration(
-                    hintText: "Add a comment...",
+                  enabled: authProvider.isAuthenticated && !isPosting,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: authProvider.isAuthenticated
+                        ? 'Add a comment...'
+                        : 'Login to comment',
                     border: InputBorder.none,
                   ),
                 ),
               ),
               IconButton(
-                onPressed: _addComment,
-                icon: const Icon(Icons.send_rounded),
+                onPressed: canComment ? _addComment : null,
+                icon: isPosting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.send_rounded),
                 color: AppColors.primary,
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        if (comments.isEmpty)
-          Text("No comments yet.",
-              style: AppTextStyles.body.copyWith(color: AppColors.textMuted))
+        if (isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (comments.isEmpty)
+          Text(
+            'No comments yet.',
+            style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
+          )
         else
-          ...comments.map((c) => CommentCard(comment: c)),
+          ...comments.map((comment) => CommentCard(comment: comment)),
       ],
     );
   }
 }
 
-class CommentModel {
-  final String id;
-  final String userName;
-  final String avatarUrl;
-  final String comment;
-  final String timeAgo;
-
-  CommentModel({
-    required this.id,
-    required this.userName,
-    required this.avatarUrl,
-    required this.comment,
-    required this.timeAgo,
-  });
-}
-
 class CommentCard extends StatelessWidget {
-  final CommentModel comment;
+  final EventCommentModel comment;
 
   const CommentCard({required this.comment});
 
@@ -548,23 +571,36 @@ class CommentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundImage: comment.avatarUrl.isNotEmpty
-                ? NetworkImage(comment.avatarUrl)
-                : null,
-            child: comment.avatarUrl.isEmpty ? const Icon(Icons.person) : null,
+            backgroundImage: NetworkImage(comment.avatarUrlResolved),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(comment.userName, style: AppTextStyles.body),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        comment.userName,
+                        style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Text(
+                      comment.timeAgo,
+                      style: AppTextStyles.caption.copyWith(color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 4),
-                Text(comment.comment,
-                    style: AppTextStyles.body.copyWith(color: AppColors.textSecondary)),
+                Text(
+                  comment.content,
+                  style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                ),
               ],
             ),
           ),

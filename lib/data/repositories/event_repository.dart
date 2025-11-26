@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/event_comment_model.dart';
 import '../models/event_model.dart';
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
@@ -181,6 +182,57 @@ class EventRepository {
       }
     } catch (e) {
       throw Exception('Error leaving event: $e');
+    }
+  }
+
+  Future<List<EventCommentModel>> getEventComments(String eventId) async {
+    try {
+      final response = await _apiClient.get(ApiEndpoints.eventComments(eventId));
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.parseResponse(response);
+        final comments = data?['comments'] as List<dynamic>? ?? [];
+        return comments
+            .map((json) => EventCommentModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw Exception('Failed to load comments: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error fetching comments: $e');
+    }
+  }
+
+  Future<EventCommentModel> addEventComment(String eventId, String content) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.eventComments(eventId),
+        body: {'content': content},
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = _apiClient.parseResponse(response);
+        final commentData = data?['comment'] ?? data;
+        return EventCommentModel.fromJson(commentData as Map<String, dynamic>);
+      }
+
+      throw Exception('Failed to add comment: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error adding comment: $e');
+    }
+  }
+
+  Future<void> deleteEventComment(String eventId, String commentId) async {
+    try {
+      final response = await _apiClient.delete(
+        ApiEndpoints.eventCommentById(eventId, commentId),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete comment: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error deleting comment: $e');
     }
   }
 }

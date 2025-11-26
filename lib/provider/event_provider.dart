@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
+import '../data/models/event_comment_model.dart';
 import '../data/models/event_model.dart';
 import '../data/services/event_service.dart';
 
@@ -16,6 +17,9 @@ class EventProvider extends ChangeNotifier {
   List<EventModel> _filteredEvents = [];
   List<EventModel> _userEvents = [];
   EventModel? _selectedEvent;
+  final Map<String, List<EventCommentModel>> _eventComments = {};
+  final Set<String> _loadingCommentsForEvents = {};
+  final Set<String> _postingCommentsForEvents = {};
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -24,6 +28,15 @@ class EventProvider extends ChangeNotifier {
   List<EventModel> get filteredEvents => _filteredEvents;
   List<EventModel> get userEvents => _userEvents;
   EventModel? get selectedEvent => _selectedEvent;
+  List<EventCommentModel> commentsFor(String eventId) => _eventComments[eventId] ?? [];
+  bool isCommentsLoading(String eventId) => _loadingCommentsForEvents.contains(eventId);
+  bool isPostingComment(String eventId) => _postingCommentsForEvents.contains(eventId);
+  int? commentCountFor(String eventId) {
+    if (_eventComments.containsKey(eventId)) {
+      return _eventComments[eventId]!.length;
+    }
+    return null;
+  }
 
   Future<void> loadFeaturedEvents() async {
     _setLoading(true);
@@ -257,6 +270,67 @@ class EventProvider extends ChangeNotifier {
     } catch (e) {
       _setError(e.toString());
       _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadEventComments(String eventId) async {
+    if (eventId.isEmpty) return;
+
+    _loadingCommentsForEvents.add(eventId);
+    notifyListeners();
+
+    try {
+      final comments = await _eventService.getEventComments(eventId);
+      _eventComments[eventId] = comments;
+    } catch (e) {
+      _setError(e.toString());
+    } finally {
+      _loadingCommentsForEvents.remove(eventId);
+      notifyListeners();
+    }
+  }
+
+  Future<bool> addEventComment(String eventId, String content) async {
+    if (eventId.isEmpty || content.trim().isEmpty) return false;
+
+    _postingCommentsForEvents.add(eventId);
+    notifyListeners();
+
+    try {
+      final newComment = await _eventService.addEventComment(eventId, content.trim());
+      final existing = _eventComments[eventId] ?? [];
+      _eventComments[eventId] = [newComment, ...existing];
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _postingCommentsForEvents.remove(eventId);
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteEventComment(String eventId, String commentId) async {
+    if (eventId.isEmpty || commentId.isEmpty) return false;
+
+    _postingCommentsForEvents.add(eventId);
+    notifyListeners();
+
+    try {
+      await _eventService.deleteEventComment(eventId, commentId);
+      final existing = _eventComments[eventId];
+      if (existing != null) {
+        existing.removeWhere((comment) => comment.id == commentId);
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _postingCommentsForEvents.remove(eventId);
       notifyListeners();
     }
   }

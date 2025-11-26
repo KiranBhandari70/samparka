@@ -25,6 +25,8 @@ class ApiEndpoints {
   static String joinEvent(String id) => '$events/$id/join';
   static String leaveEvent(String id) => '$events/$id/leave';
   static String eventAttendees(String id) => '$events/$id/attendees';
+  static String eventComments(String id) => '$events/$id/comments';
+  static String eventCommentById(String eventId, String commentId) => '$events/$eventId/comments/$commentId';
   static const String createEvent = '$baseUrl/events';
   static String updateEvent(String id) => '$events/$id';
   static String deleteEvent(String id) => '$events/$id';

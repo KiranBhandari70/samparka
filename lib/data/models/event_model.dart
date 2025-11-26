@@ -18,6 +18,7 @@ class EventModel {
   final bool isSponsored;
   final EventLocation? location;
   final String createdBy;
+  final UserModel? host;
   final List<String> attendees;
   final int commentCount;
   final DateTime createdAt;
@@ -38,6 +39,7 @@ class EventModel {
     this.isSponsored = false,
     this.location,
     required this.createdBy,
+    this.host,
     this.attendees = const [],
     this.commentCount = 0,
     required this.createdAt,
@@ -45,6 +47,17 @@ class EventModel {
   }) : _categoryString = category;
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
+    UserModel? host;
+    String createdById = '';
+
+    final createdByData = json['createdBy'];
+    if (createdByData is Map<String, dynamic>) {
+      createdById = createdByData['_id']?.toString() ?? createdByData['id']?.toString() ?? '';
+      host = UserModel.fromJson(createdByData);
+    } else {
+      createdById = createdByData?.toString() ?? '';
+    }
+
     return EventModel(
       id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
@@ -67,7 +80,8 @@ class EventModel {
       location: json['location'] != null
           ? EventLocation.fromJson(json['location'])
           : null,
-      createdBy: json['createdBy']?.toString() ?? '',
+      createdBy: createdById,
+      host: host,
       attendees: json['attendees'] != null
           ? List<String>.from(json['attendees'].map((a) => a.toString()))
           : [],
@@ -137,7 +151,7 @@ class EventModel {
 
   List<Color> get categoryColors => category.colors;
 
-  UserModel? get host => null; // TODO: fetch using createdBy
+  UserModel? get hostUser => host;
 
   String get timeLabel {
     final hour = startsAt.hour;
