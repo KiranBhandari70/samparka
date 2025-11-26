@@ -5,6 +5,7 @@ import 'dart:io';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/services/location_service.dart';
 import '../../../core/utils/permission_helper.dart';
 import '../../../data/models/category_model.dart';
 import '../../../provider/auth_provider.dart';
@@ -30,6 +31,17 @@ class _AddEventPageState extends State<AddEventPage> {
   File? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
   final List<Map<String, dynamic>> _ticketTiers = [];
+  LocationResult? _autoLocation;
+  bool _isDetectingLocation = false;
+  String? _locationStatusMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _attemptAutoFillLocation();
+    });
+  }
 
   @override
   void dispose() {
@@ -168,6 +180,52 @@ class _AddEventPageState extends State<AddEventPage> {
     }
   }
 
+  Future<void> _attemptAutoFillLocation({bool forceUpdate = false}) async {
+    setState(() {
+      _isDetectingLocation = true;
+      _locationStatusMessage = 'Detecting your location...';
+    });
+
+    final hasPermission = await PermissionHelper.requestLocationPermission();
+    if (!hasPermission) {
+      if (mounted) {
+        setState(() {
+          _isDetectingLocation = false;
+          _locationStatusMessage =
+              'Location permission is required to auto-fill.';
+        });
+      }
+      return;
+    }
+
+    final location = await LocationService.instance.detectCurrentLocation();
+    if (!mounted) return;
+
+    if (location != null) {
+      setState(() {
+        _autoLocation = location;
+        final shouldWriteController =
+            forceUpdate || _addressController.text.trim().isEmpty;
+        if (shouldWriteController) {
+          _addressController.text =
+              location.addressLine ?? _formatCoordinates(location);
+        }
+        _locationStatusMessage = 'Location detected automatically';
+        _isDetectingLocation = false;
+      });
+    } else {
+      setState(() {
+        _locationStatusMessage = 'Unable to detect current location';
+        _isDetectingLocation = false;
+      });
+    }
+  }
+
+  String _formatCoordinates(LocationResult? location) {
+    if (location == null) return '';
+    return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
+  }
+
   Future<void> _submit() async {
     // Validate form
     if (_titleController.text.trim().isEmpty) {
@@ -252,13 +310,18 @@ class _AddEventPageState extends State<AddEventPage> {
       'ticketTiers': _ticketTiers,
     };
 
-    // Add location if address is provided
-    if (_addressController.text.trim().isNotEmpty) {
+    final addressText = _addressController.text.trim();
+    if (_autoLocation != null) {
+      eventData['location'] = _autoLocation!.toGeoJson(
+        overridePlaceName: addressText.isNotEmpty ? addressText : null,
+        overrideAddress: addressText.isNotEmpty ? addressText : null,
+      );
+    } else if (addressText.isNotEmpty) {
       eventData['location'] = {
         'type': 'Point',
-        'coordinates': [0.0, 0.0], // TODO: Get actual coordinates from address
-        'placeName': _addressController.text.trim(),
-        'address': _addressController.text.trim(),
+        'coordinates': [0.0, 0.0],
+        'placeName': addressText,
+        'address': addressText,
       };
     }
 
@@ -296,7 +359,10 @@ class _AddEventPageState extends State<AddEventPage> {
       _selectedTime = null;
       _selectedImage = null;
       _ticketTiers.clear();
-      setState(() {});
+      setState(() {
+        _autoLocation = null;
+        _locationStatusMessage = null;
+      });
       
       // Navigate to home by finding MainShell and switching tab
       MainShell.navigateToHome(context);
@@ -414,6 +480,49 @@ class _AddEventPageState extends State<AddEventPage> {
                       controller: _addressController,
                       decoration: const InputDecoration(
                         hintText: 'Address',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _autoLocation != null ? Icons.my_location : Icons.location_searching,
+                            color: _autoLocation != null ? AppColors.accentGreen : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isDetectingLocation
+                                  ? 'Detecting your location...'
+                                  : _locationStatusMessage ??
+                                      'Grant location permission to auto-fill this field.',
+                              style: AppTextStyles.caption.copyWith(
+                                color: _isDetectingLocation
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _isDetectingLocation
+                                ? null
+                                : () => _attemptAutoFillLocation(forceUpdate: true),
+                            child: _isDetectingLocation
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Use current'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),

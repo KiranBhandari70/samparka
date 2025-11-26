@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 
 import '../../../core/constants/colors.dart';
+import '../../../core/services/location_service.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/permission_helper.dart';
 import '../../../data/models/category_model.dart';
@@ -33,6 +34,9 @@ class _EditEventPageState extends State<EditEventPage> {
   TimeOfDay? _selectedTime;
   File? _selectedImage;
   final ImagePicker _imagePicker = ImagePicker();
+  LocationResult? _autoLocation;
+  bool _isDetectingLocation = false;
+  String? _locationStatusMessage;
 
   @override
   void initState() {
@@ -43,6 +47,11 @@ class _EditEventPageState extends State<EditEventPage> {
     _selectedCategory = widget.event.category;
     _selectedDate = widget.event.startsAt;
     _selectedTime = TimeOfDay.fromDateTime(widget.event.startsAt);
+    if (widget.event.location == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _detectCurrentLocation());
+    } else {
+      _locationStatusMessage = 'Using existing event location';
+    }
   }
 
   @override
@@ -114,6 +123,50 @@ class _EditEventPageState extends State<EditEventPage> {
     }
   }
 
+  Future<void> _detectCurrentLocation({bool forceUpdate = false}) async {
+    setState(() {
+      _isDetectingLocation = true;
+      _locationStatusMessage = 'Detecting your location...';
+    });
+
+    final hasPermission = await PermissionHelper.requestLocationPermission();
+    if (!hasPermission) {
+      if (mounted) {
+        setState(() {
+          _isDetectingLocation = false;
+          _locationStatusMessage = 'Location permission is required to auto-fill.';
+        });
+      }
+      return;
+    }
+
+    final location = await LocationService.instance.detectCurrentLocation();
+    if (!mounted) return;
+
+    if (location != null) {
+      setState(() {
+        _autoLocation = location;
+        final shouldWriteController =
+            forceUpdate || _addressController.text.trim().isEmpty;
+        if (shouldWriteController) {
+          _addressController.text =
+              location.addressLine ?? _formatCoordinates(location);
+        }
+        _locationStatusMessage = 'Location detected automatically';
+        _isDetectingLocation = false;
+      });
+    } else {
+      setState(() {
+        _locationStatusMessage = 'Unable to detect current location';
+        _isDetectingLocation = false;
+      });
+    }
+  }
+
+  String _formatCoordinates(LocationResult location) {
+    return '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}';
+  }
+
   Future<void> _submit() async {
     // Validate form
     if (_titleController.text.trim().isEmpty) {
@@ -163,13 +216,18 @@ class _EditEventPageState extends State<EditEventPage> {
       'startsAt': eventDateTime.toIso8601String(),
     };
 
-    // Add location if address is provided
-    if (_addressController.text.trim().isNotEmpty) {
+    final addressText = _addressController.text.trim();
+    if (_autoLocation != null) {
+      eventData['location'] = _autoLocation!.toGeoJson(
+        overridePlaceName: addressText.isNotEmpty ? addressText : null,
+        overrideAddress: addressText.isNotEmpty ? addressText : null,
+      );
+    } else if (addressText.isNotEmpty) {
       eventData['location'] = {
         'type': 'Point',
         'coordinates': widget.event.location?.coordinates ?? [0.0, 0.0],
-        'placeName': _addressController.text.trim(),
-        'address': _addressController.text.trim(),
+        'placeName': addressText,
+        'address': addressText,
       };
     }
 
@@ -287,6 +345,49 @@ class _EditEventPageState extends State<EditEventPage> {
                       controller: _addressController,
                       decoration: const InputDecoration(
                         hintText: 'Address',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _autoLocation != null ? Icons.my_location : Icons.location_searching,
+                            color: _autoLocation != null ? AppColors.accentGreen : AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _isDetectingLocation
+                                  ? 'Detecting your location...'
+                                  : _locationStatusMessage ??
+                                      'Tap below to auto-detect this event\'s location.',
+                              style: AppTextStyles.caption.copyWith(
+                                color: _isDetectingLocation
+                                    ? AppColors.primary
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _isDetectingLocation
+                                ? null
+                                : () => _detectCurrentLocation(forceUpdate: true),
+                            child: _isDetectingLocation
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text('Use current'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 20),

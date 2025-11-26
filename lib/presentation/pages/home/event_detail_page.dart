@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import '../../../provider/auth_provider.dart';
 import '../../../provider/event_provider.dart';
 import '../events/ticket_purchase_page.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EventDetailPage extends StatefulWidget {
   final EventModel event;
@@ -395,6 +396,22 @@ class _MapSection extends StatelessWidget {
 
   const _MapSection({this.location});
 
+  Future<void> _openGoogleMaps(double lat, double lng) async {
+    final Uri googleMapUri = Uri.parse(
+      "geo:$lat,$lng?q=$lat,$lng",
+    );
+
+    if (await canLaunchUrl(googleMapUri)) {
+      await launchUrl(googleMapUri, mode: LaunchMode.externalApplication);
+    } else {
+      // fallback: open in browser google maps
+      final Uri browserUrl = Uri.parse(
+        "https://www.google.com/maps/search/?api=1&query=$lat,$lng",
+      );
+      await launchUrl(browserUrl, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double? lat = location?.latitude;
@@ -422,11 +439,15 @@ class _MapSection extends StatelessWidget {
                 ),
               ),
             ),
+
+            // 👉 ONLY THIS BUTTON UPDATED
             Positioned(
               bottom: 16,
               right: 16,
               child: ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: (lat != null && lng != null)
+                    ? () => _openGoogleMaps(lat, lng)
+                    : null,
                 icon: const Icon(Icons.open_in_new, size: 18),
                 label: const Text('Open in Maps'),
               ),
@@ -437,6 +458,7 @@ class _MapSection extends StatelessWidget {
     );
   }
 }
+
 
 class CommentsSection extends StatefulWidget {
   final String eventId;
@@ -481,7 +503,7 @@ class _CommentsSectionState extends State<CommentsSection> {
     if (text.isEmpty) return;
 
     final success =
-        await context.read<EventProvider>().addEventComment(widget.eventId, text);
+    await context.read<EventProvider>().addEventComment(widget.eventId, text);
 
     if (!mounted) return;
     if (success) {
@@ -531,10 +553,10 @@ class _CommentsSectionState extends State<CommentsSection> {
                 onPressed: canComment ? _addComment : null,
                 icon: isPosting
                     ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : const Icon(Icons.send_rounded),
                 color: AppColors.primary,
               ),
