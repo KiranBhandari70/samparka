@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:samparka/presentation/pages/settings/about_samparka.dart';
@@ -43,7 +44,9 @@ import 'presentation/pages/business/business_events_page.dart';
 import 'presentation/pages/business/business_partners_page.dart';
 import 'presentation/pages/explore/category_explore_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // ⚡ Firebase initialized before runApp
   runApp(const SamparkaApp());
 }
 
@@ -68,14 +71,14 @@ class _SamparkaAppState extends State<SamparkaApp> {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AuthProvider()),
-          ChangeNotifierProvider(create: (_) => EventProvider()),
-          ChangeNotifierProvider(create: (_) => UserProvider()),
-          ChangeNotifierProvider(create: (_) => GroupProvider()),
-          ChangeNotifierProvider(create: (_) => RewardProvider()),
-          ChangeNotifierProvider(create: (_) => OfferProvider()),
-        ],
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => EventProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => GroupProvider()),
+        ChangeNotifierProvider(create: (_) => RewardProvider()),
+        ChangeNotifierProvider(create: (_) => OfferProvider()),
+      ],
       child: MaterialApp(
         title: AppStrings.appName,
         debugShowCheckedModeBanner: false,
@@ -118,19 +121,18 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case EventDetailPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
-              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-              return MaterialPageRoute(builder: (_) => EventDetailPage(event: event));
+              return MaterialPageRoute(
+                  builder: (_) => event != null ? EventDetailPage(event: event) : const SplashPage());
 
             case GroupChatPage.routeName:
               final args = settings.arguments as GroupChatArgs?;
-              if (args == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-              return MaterialPageRoute(builder: (_) => GroupChatPage(group: args.group));
+              return MaterialPageRoute(
+                  builder: (_) => args != null ? GroupChatPage(group: args.group) : const SplashPage());
 
             case GroupDetailPage.routeName:
               final args = settings.arguments;
               if (args is! GroupModel) return MaterialPageRoute(builder: (_) => const SplashPage());
-              final group = args;
-              return MaterialPageRoute(builder: (_) => GroupDetailPage(group: group));
+              return MaterialPageRoute(builder: (_) => GroupDetailPage(group: args));
 
             case GroupsListPage.routeName:
               return MaterialPageRoute(builder: (_) => const GroupsListPage());
@@ -149,18 +151,19 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case EditEventPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
-              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-              return MaterialPageRoute(builder: (_) => EditEventPage(event: event));
+              return MaterialPageRoute(
+                  builder: (_) => event != null ? EditEventPage(event: event) : const SplashPage());
 
             case TicketPurchasePage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
-              if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
               return MaterialPageRoute(
                 builder: (context) {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
                   final userId = authProvider.currentUserId ?? '';
-                  return TicketPurchasePage(event: event, userId: userId);
+                  return event != null
+                      ? TicketPurchasePage(event: event, userId: userId)
+                      : const SplashPage();
                 },
               );
 
@@ -181,6 +184,7 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case BusinessDashboardPage.routeName:
               return MaterialPageRoute(builder: (_) => const BusinessDashboardPage());
+
             case CreateOfferPage.routeName:
               return MaterialPageRoute(builder: (_) => const CreateOfferPage());
 

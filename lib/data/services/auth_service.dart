@@ -37,6 +37,34 @@ class AuthService {
     }
   }
 
+  /// Login or register via Google OAuth.
+  /// [idToken] is the Google ID token obtained from the client.
+  Future<Map<String, dynamic>> loginWithGoogle(String idToken) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.googleLogin,
+        body: {
+          'tokenId': idToken,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.parseResponse(response);
+        if (data != null) {
+          if (data['token'] != null) {
+            await _storageService.saveToken(data['token'] as String);
+          }
+          return data;
+        }
+        throw Exception('Invalid response format');
+      }
+
+      throw Exception('Google login failed: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error during Google login: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> register({
     required String email,
     required String password,

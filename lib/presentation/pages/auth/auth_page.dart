@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
@@ -33,8 +34,18 @@ class _AuthPageState extends State<AuthPage> {
     super.initState();
     _isLogin = widget.initialMode;
   }
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // IMPORTANT: Replace this with your actual Web client ID from Google Cloud console
+  // (the same one used as GOOGLE_CLIENT_ID on the backend).
+  // Without serverClientId, google_sign_in will not provide an idToken on Android/iOS.
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // TODO: put your real web client ID here:
+    serverClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  );
 
   @override
   void dispose() {
@@ -98,6 +109,71 @@ class _AuthPageState extends State<AuthPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Authentication failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        // User cancelled
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      if (idToken == null) {
+        throw Exception('Failed to get Google ID token');
+      }
+
+      final success = await authProvider.loginWithGoogle(idToken);
+      if (!mounted) return;
+
+      final user = authProvider.userModel;
+      if (success && user != null) {
+        final needsInterests = (user.interests.isEmpty);
+
+        if (needsInterests) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => InterestsSelectionPage(
+                onCompleted: () async {
+                  await userProvider.loadProfile();
+                  await authProvider.refreshUser();
+                  if (!mounted) return;
+                  Navigator.of(context).pushReplacementNamed(
+                    MainShell.routeName,
+                    arguments: {'user': authProvider.userModel},
+                  );
+                },
+              ),
+            ),
+          );
+        } else {
+          Navigator.of(context).pushReplacementNamed(
+            MainShell.routeName,
+            arguments: {'user': user},
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.error ?? 'Google sign-in failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google sign-in error: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -252,7 +328,7 @@ class _AuthPageState extends State<AuthPage> {
                         _SocialButton(
                           label: AppStrings.continueWithGoogle,
                           icon: Icons.g_mobiledata_rounded,
-                          onTap: _submit,
+                          onTap: _handleGoogleSignIn,
                         ),
                         const SizedBox(height: 12),
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "823355742434",
+    "project_id": "samparka-44552",
+    "storage_bucket": "samparka-44552.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:823355742434:android:435e17b2445174e267e6bb",
+        "android_client_info": {
+          "package_name": "com.Samparka.samparka"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAm1_AXxq-xjBoSPAKaU_AwzL2NBjGBSC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

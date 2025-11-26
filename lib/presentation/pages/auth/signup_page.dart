@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
@@ -37,11 +39,11 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+  // Email/Password registration
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
 
     final success = await authProvider.register(
       email: _emailController.text,
@@ -49,28 +51,70 @@ class _SignUpPageState extends State<SignUpPage> {
     );
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => InterestsSelectionPage(
-          onCompleted: () async {
-            final userProvider = Provider.of<UserProvider>(context, listen: false);
-            final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-            // Refresh user data if needed
-            await authProvider.refreshUser();
-
-            if (authProvider.userModel != null) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => MainShell(user: authProvider.userModel!),
-                ),
-              );
-            }
-          },
+    if (success) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => InterestsSelectionPage(
+            onCompleted: () async {
+              await authProvider.refreshUser();
+              if (authProvider.userModel != null) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => MainShell(user: authProvider.userModel!),
+                  ),
+                );
+              }
+            },
+          ),
         ),
-      ),
-    );
+      );
+    }
+  }
 
+  // Google Sign-In registration/login
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return; // User cancelled
+
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      await authProvider.setUserFromFirebase(userCredential.user);
+
+      // Navigate to interests selection if first login
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => InterestsSelectionPage(
+            onCompleted: () async {
+              final userProvider =
+              Provider.of<UserProvider>(context, listen: false);
+              await userProvider.updateInterests(userProvider.selectedInterests);
+
+              final currentUser = authProvider.userModel;
+              if (currentUser != null) {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                      builder: (_) => MainShell(user: currentUser)),
+                );
+              }
+            },
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Sign-In failed')),
+      );
+    }
   }
 
   @override
@@ -94,9 +138,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 8),
               Text(
                 'Join the Community',
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textSecondary,
-                ),
+                style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -104,6 +146,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 key: _formKey,
                 child: Column(
                   children: [
+                    // Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -113,6 +156,8 @@ class _SignUpPageState extends State<SignUpPage> {
                       validator: Validators.email,
                     ),
                     const SizedBox(height: 16),
+
+                    // Password
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -133,6 +178,8 @@ class _SignUpPageState extends State<SignUpPage> {
                       validator: Validators.password,
                     ),
                     const SizedBox(height: 16),
+
+                    // Confirm Password
                     TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
@@ -146,36 +193,31 @@ class _SignUpPageState extends State<SignUpPage> {
                             color: AppColors.textMuted,
                           ),
                           onPressed: () {
-                            setState(
-                                    () => _obscureConfirmPassword = !_obscureConfirmPassword);
+                            setState(() =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword);
                           },
                         ),
                       ),
-                      validator: (value) => Validators.confirmPassword(
-                        value,
-                        _passwordController.text,
-                      ),
+                      validator: (value) =>
+                          Validators.confirmPassword(value, _passwordController.text),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
+                        Icon(Icons.check_circle, size: 20, color: AppColors.primary),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'Password must be at least 8 characters',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.textSecondary),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
+
+                    // Sign Up button
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, _) {
                         return PrimaryButton(
@@ -188,6 +230,8 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Divider
               Row(
                 children: [
                   Expanded(child: Divider(color: AppColors.border)),
@@ -195,29 +239,29 @@ class _SignUpPageState extends State<SignUpPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       'Or Continue with',
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.textMuted,
-                      ),
+                      style: AppTextStyles.body.copyWith(color: AppColors.textMuted),
                     ),
                   ),
                   Expanded(child: Divider(color: AppColors.border)),
                 ],
               ),
               const SizedBox(height: 24),
+
+              // Google Sign-In button
               _SocialButton(
                 label: AppStrings.continueWithGoogle,
                 icon: Icons.g_mobiledata_rounded,
-                onTap: _handleSignUp,
+                onTap: _handleGoogleSignIn,
               ),
               const SizedBox(height: 24),
+
+              // Already have account
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Already have an account? ',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                    style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
                   ),
                   TextButton(
                     onPressed: () {
@@ -268,33 +312,11 @@ class _SocialButton extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             label,
-            style: AppTextStyles.body.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.body
+                .copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Wrapper to show InterestSelectionPage and navigate to MainShell after selection
-class InterestsSelectionPageWrapper extends StatelessWidget {
-  final UserProvider userProvider;
-
-  const InterestsSelectionPageWrapper({required this.userProvider, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return InterestsSelectionPage(
-      onCompleted: () async {
-        // Save selected interests via UserProvider
-        await userProvider.updateInterests(userProvider.selectedInterests);
-
-        // Navigate to MainShell after saving interests
-        Navigator.of(context).pushReplacementNamed(MainShell.routeName);
-      },
     );
   }
 }

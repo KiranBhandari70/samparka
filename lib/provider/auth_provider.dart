@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../data/services/auth_service.dart';
@@ -60,6 +61,26 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _authService.login(email, password);
       // Backend returns { success: true, user: {...}, token: "..." }
+      _userData = response['user'] ?? response;
+      _isAuthenticated = true;
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Login using Google ID token (obtained from google_sign_in).
+  Future<bool> loginWithGoogle(String idToken) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final response = await _authService.loginWithGoogle(idToken);
       _userData = response['user'] ?? response;
       _isAuthenticated = true;
       _setLoading(false);
@@ -209,4 +230,6 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+  Future<void> setUserFromFirebase(User? user) async {}
 }

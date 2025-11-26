@@ -89,11 +89,12 @@ export const login = async (req, res, next) => {
 // @access  Public
 export const googleLogin = async (req, res, next) => {
   try {
-    const { tokenId } = req.body;
-    if (!tokenId) return res.status(400).json({ message: 'Google token is required' });
+    const { tokenId, idToken } = req.body;
+    const tokenToVerify = tokenId || idToken;
+    if (!tokenToVerify) return res.status(400).json({ message: 'Google token is required' });
 
     const ticket = await googleClient.verifyIdToken({
-      idToken: tokenId,
+      idToken: tokenToVerify,
       audience: config.googleClientId,
     });
 
