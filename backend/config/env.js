@@ -20,5 +20,8 @@ export const config = {
   // File upload
   uploadPath: process.env.UPLOAD_PATH || './uploads',
   maxFileSize: process.env.MAX_FILE_SIZE || 5242880, // 5MB
+  // Esewa Payment
+  esewaMerchantCode: process.env.ESEWA_MERCHANT_CODE || 'EPAYTEST',
+  esewaVerifyUrl: process.env.ESEWA_VERIFY_URL || 'https://uat.esewa.com.np/epay/transrec',
 };
 

@@ -151,7 +151,13 @@ class _SamparkaAppState extends State<SamparkaApp> {
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
               if (event == null) return MaterialPageRoute(builder: (_) => const SplashPage());
-              return MaterialPageRoute(builder: (_) => TicketPurchasePage(event: event));
+              return MaterialPageRoute(
+                builder: (context) {
+                  final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                  final userId = authProvider.currentUserId ?? '';
+                  return TicketPurchasePage(event: event, userId: userId);
+                },
+              );
 
             case RewardsDashboardPage.routeName:
               return MaterialPageRoute(builder: (_) => const RewardsDashboardPage());

@@ -1,15 +1,20 @@
+// lib/pages/ticket_purchase_page.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:esewa_flutter/esewa_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
-import '../../widgets/primary_button.dart';
+import '../../../config/environment.dart';
 
 class TicketPurchasePage extends StatefulWidget {
   final EventModel event;
+  final String userId; // Logged-in user ID
 
-  const TicketPurchasePage({super.key, required this.event});
+  const TicketPurchasePage({super.key, required this.event, required this.userId});
 
   static const String routeName = '/ticket-purchase';
 
@@ -23,58 +28,119 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
 
   String paymentData = '';
   String paymentError = '';
+  bool isSaving = false;
+  late String _pid;
 
   @override
   void initState() {
     super.initState();
-    // Default to first ticket tier
     _selectedTier = widget.event.ticketTiers.isNotEmpty
         ? widget.event.ticketTiers[0]
         : const TicketTier(label: "Standard", price: 0.0);
+    _generatePid();
+  }
+
+  void _generatePid() {
+    _pid = "PID${DateTime.now().millisecondsSinceEpoch}";
   }
 
   double get _totalPrice => _selectedTier.price * _ticketCount;
 
-  void _payWithESewa() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Complete Payment"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            EsewaPayButton(
-              paymentConfig: ESewaConfig.dev(
-                amount: _totalPrice,
-                successUrl: 'https://developer.esewa.com.np/success',
-                failureUrl: 'https://developer.esewa.com.np/failure',
-                secretKey: '8gBm/:&EnhH.1/q', // replace with your actual key
-              ),
-              width: double.infinity,
-              onSuccess: (result) {
-                setState(() {
-                  paymentData = result.data!;
-                  paymentError = '';
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Payment Successful")),
-                );
-              },
-              onFailure: (result) {
-                setState(() {
-                  paymentError = result;
-                  paymentData = '';
-                });
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Payment Failed")),
-                );
-              },
+  /// Save payment to backend
+  Future<void> _savePaymentToBackend(String referenceId) async {
+    final url = Uri.parse('${Environment.apiBaseUrl}/api/v1/esewa/create');
+    final body = jsonEncode({
+      'userId': widget.userId,
+      'eventId': widget.event.id,
+      'amount': _totalPrice,
+      'refId': referenceId,
+      'pid': _pid,
+      'ticketCount': _ticketCount,
+      'tierLabel': _selectedTier.label,
+    });
+
+    try {
+      if (kDebugMode) print('Sending payment request: $body');
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (kDebugMode) print('Payment response status: ${response.statusCode}');
+      if (kDebugMode) print('Payment response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          if (kDebugMode) print('Payment saved successfully');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Ticket purchased successfully!"),
+              backgroundColor: Colors.green,
             ),
-          ],
+          );
+        } else {
+          if (kDebugMode) print('Payment verification failed: ${responseData['verificationError']}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Payment verification failed: ${responseData['verificationError'] ?? 'Unknown error'}"),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        final errorData = jsonDecode(response.body);
+        if (kDebugMode) print('Failed to save payment: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Failed to save ticket: ${errorData['message'] ?? 'Unknown error'}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error saving payment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error connecting to backend: $e"),
+          backgroundColor: Colors.red,
         ),
-      ),
+      );
+    }
+  }
+
+  /// Payment callbacks
+  void _onPaymentSuccess(EsewaPaymentResponse response) async {
+    final referenceId = response.data; // Transaction reference ID
+    setState(() {
+      paymentData = referenceId ?? '';
+      paymentError = '';
+      isSaving = true;
+    });
+
+    if (referenceId != null && referenceId.isNotEmpty) {
+      await _savePaymentToBackend(referenceId);
+    }
+
+    setState(() => isSaving = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Payment Successful")),
+    );
+
+    _generatePid(); // regenerate pid for next purchase
+  }
+
+  void _onPaymentFailure(String errorMessage) {
+    setState(() {
+      paymentError = errorMessage;
+      paymentData = '';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Payment Failed: $errorMessage")),
     );
   }
 
@@ -139,11 +205,16 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                     ),
                     const SizedBox(height: 24),
                     if (paymentData.isNotEmpty)
-                      Text("Payment Success Data: $paymentData",
+                      Text("Payment Reference: $paymentData",
                           style: const TextStyle(color: Colors.green)),
                     if (paymentError.isNotEmpty)
                       Text("Payment Error: $paymentError",
                           style: const TextStyle(color: Colors.red)),
+                    if (isSaving)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                   ],
                 ),
               ),
@@ -160,9 +231,24 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
                   ),
                 ],
               ),
-              child: PrimaryButton(
-                label: "Pay with eSewa",
-                onPressed: _payWithESewa,
+              child: Column(
+                children: [
+                  Text("PID: $_pid", style: AppTextStyles.caption),
+                  const SizedBox(height: 8),
+                  EsewaPayButton(
+                    paymentConfig: ESewaConfig.dev(
+                      amount: _totalPrice,
+                      productCode: "EPAYTEST",
+                      successUrl: 'https://uat.esewa.com.np/mobile/success',
+                      failureUrl: 'https://uat.esewa.com.np/mobile/failure',
+                      secretKey: '8gBm/:&EnhH.1/q',
+                      transactionUuid: _pid,
+                    ),
+                    width: double.infinity,
+                    onSuccess: _onPaymentSuccess,
+                    onFailure: _onPaymentFailure,
+                  ),
+                ],
               ),
             ),
           ],
@@ -172,7 +258,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   }
 }
 
-// ---------------------- Event Summary Card ----------------------
+// ---------------- Event Summary Card ----------------
 class _EventSummaryCard extends StatelessWidget {
   final EventModel event;
 
@@ -235,7 +321,7 @@ class _EventSummaryCard extends StatelessWidget {
   }
 }
 
-// ---------------------- Price Breakdown ----------------------
+// ---------------- Price Breakdown ----------------
 class _PriceBreakdown extends StatelessWidget {
   final double ticketPrice;
   final int ticketCount;
