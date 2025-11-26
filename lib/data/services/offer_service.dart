@@ -11,7 +11,7 @@ class OfferService {
   OfferService._();
 
   final String _baseUrl = Environment.apiBaseUrl;
-  final ApiClient _apiClient = ApiClient.instance; // ✅ fixed constructor
+  final ApiClient _apiClient = ApiClient.instance;
 
   // Get all active offers
   Future<List<OfferModel>> getAllOffers({
@@ -73,7 +73,7 @@ class OfferService {
     }
   }
 
-  // Create a new offer
+  // Create a new offer (FIXED)
   Future<OfferModel> createOffer({
     required String userId,
     required String title,
@@ -115,15 +115,13 @@ class OfferService {
         fileFieldName: 'image',
       );
 
-      // ✅ safe response parsing
-      dynamic responseData;
-      if (response is String) {
-        responseData = jsonDecode(response as String);
-      } else if (response is Map<String, dynamic>) {
-        responseData = response;
-      } else {
-        throw Exception('Unexpected response type from ApiClient');
+      final status = response.statusCode;
+
+      if (status < 200 || status >= 300) {
+        throw Exception("Server returned HTTP $status: ${response.body}");
       }
+
+      final responseData = jsonDecode(response.body);
 
       if (responseData['success'] == true) {
         return OfferModel.fromJson(responseData['data']);
@@ -135,7 +133,7 @@ class OfferService {
     }
   }
 
-  // Update an offer
+  // Update an offer (FIXED)
   Future<OfferModel> updateOffer({
     required String offerId,
     required String userId,
@@ -178,15 +176,13 @@ class OfferService {
         fileFieldName: 'image',
       );
 
-      // ✅ safe response parsing
-      dynamic responseData;
-      if (response is String) {
-        responseData = jsonDecode(response as String);
-      } else if (response is Map<String, dynamic>) {
-        responseData = response;
-      } else {
-        throw Exception('Unexpected response type from ApiClient');
+      final status = response.statusCode;
+
+      if (status < 200 || status >= 300) {
+        throw Exception("Server returned HTTP $status: ${response.body}");
       }
+
+      final responseData = jsonDecode(response.body);
 
       if (responseData['success'] == true) {
         return OfferModel.fromJson(responseData['data']);
@@ -223,13 +219,19 @@ class OfferService {
   // Redeem an offer
   Future<RedemptionResult> redeemOffer(String offerId, String userId) async {
     try {
+      final token = await ApiClient.instance.getToken();
+
       final response = await http.post(
         Uri.parse('$_baseUrl/api/v1/offers/$offerId/redeem'),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
         body: jsonEncode({'userId': userId}),
       );
 
       final data = jsonDecode(response.body);
+
       if (response.statusCode == 200) {
         if (data['success'] == true) {
           return RedemptionResult.fromJson(data['data']);
@@ -237,7 +239,7 @@ class OfferService {
           throw Exception(data['message'] ?? 'Failed to redeem offer');
         }
       } else {
-        throw Exception(data['message'] ?? 'Failed to redeem offer');
+        throw Exception("HTTP ${response.statusCode}: ${data['message']}");
       }
     } catch (e) {
       throw Exception('Failed to redeem offer: $e');

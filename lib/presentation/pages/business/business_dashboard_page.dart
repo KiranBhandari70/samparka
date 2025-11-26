@@ -305,4 +305,3 @@ class _ContentCard extends StatelessWidget {
     );
   }
 }
-

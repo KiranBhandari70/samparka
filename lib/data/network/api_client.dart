@@ -147,7 +147,7 @@ class ApiClient {
       final fileStream = http.ByteStream(file.openRead());
       final fileLength = await file.length();
       final fileName = file.path.split(Platform.pathSeparator).last;
-      
+
       // Determine content type from file extension
       String contentType;
       final ext = fileName.toLowerCase().split('.').last;
@@ -168,7 +168,7 @@ class ApiClient {
         default:
           contentType = 'image/jpeg'; // Default fallback
       }
-      
+
       final multipartFile = http.MultipartFile(
         fileFieldName,
         fileStream,
@@ -209,7 +209,7 @@ class ApiClient {
       final fileStream = http.ByteStream(file.openRead());
       final fileLength = await file.length();
       final fileName = file.path.split(Platform.pathSeparator).last;
-      
+
       // Determine content type from file extension
       String contentType;
       final ext = fileName.toLowerCase().split('.').last;
@@ -230,7 +230,7 @@ class ApiClient {
         default:
           contentType = 'image/jpeg'; // Default fallback
       }
-      
+
       final multipartFile = http.MultipartFile(
         fileFieldName,
         fileStream,
@@ -269,4 +269,10 @@ class ApiClient {
       return null;
     }
   }
+
+  /// FIXED: Properly return stored JWT token
+  Future<String?> getToken() async {
+    return await _storageService.getToken();
+  }
 }
+

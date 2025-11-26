@@ -165,4 +165,3 @@ class _DiscountOfferCard extends StatelessWidget {
     );
   }
 }
-
