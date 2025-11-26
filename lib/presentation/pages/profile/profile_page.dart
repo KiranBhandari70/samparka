@@ -8,6 +8,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/models/event_model.dart';
 import '../../../provider/event_provider.dart';
 import '../../../provider/auth_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../edit_event/edit_event_page.dart';
@@ -115,6 +116,8 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 12),
             _buildMyEvents(context),
             const SizedBox(height: 24),
+            if (displayUser.role != 'business') _buildBusinessUpgradeCard(),
+            if (displayUser.role != 'business') const SizedBox(height: 12),
             _MenuTile(
               icon: Icons.stars,
               title: 'Rewards Dashboard',
@@ -411,6 +414,179 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
     );
+  }
+
+  Widget _buildBusinessUpgradeCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.shadow,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.business,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Upgrade to Business',
+                      style: AppTextStyles.heading3.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Create offers & manage rewards',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '• Create discount offers for users\n• Manage reward point redemptions\n• Access business analytics\n• Promote your business',
+            style: AppTextStyles.body.copyWith(
+              color: Colors.white,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _showBusinessUpgradeDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF6366F1),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Upgrade Now',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBusinessUpgradeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Upgrade to Business Account'),
+        content: const Text(
+          'Are you sure you want to upgrade to a business account? This will allow you to:\n\n'
+          '• Create discount offers\n'
+          '• Manage reward redemptions\n'
+          '• Access business dashboard\n'
+          '• Promote your business\n\n'
+          'You can switch back to a regular account anytime.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _upgradeToBusinessAccount();
+            },
+            child: const Text('Upgrade'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _upgradeToBusinessAccount() async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      
+      // Update user role to business
+      await userProvider.updateProfile({
+        'role': 'business',
+      });
+
+      // Refresh user data
+      await authProvider.refreshUser();
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully upgraded to business account!'),
+            backgroundColor: AppColors.accentGreen,
+          ),
+        );
+
+        // Navigate to business dashboard
+        Navigator.of(context).pushNamed('/business-dashboard');
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upgrade account: $e'),
+            backgroundColor: AppColors.accentRed,
+          ),
+        );
+      }
+    }
   }
 }
 

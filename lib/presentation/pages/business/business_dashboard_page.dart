@@ -103,7 +103,7 @@ class BusinessDashboardPage extends StatelessWidget {
                 description: 'Create discount tie-ups for reward redemption',
                 color: AppColors.accentGreen,
                 onTap: () {
-                  Navigator.of(context).pushNamed('/add-discount-offer');
+                  Navigator.of(context).pushNamed('/create-offer');
                 },
               ),
               const SizedBox(height: 24),

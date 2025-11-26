@@ -28,7 +28,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   // Allowed file extensions
   const allowedExtensions = /\.(jpeg|jpg|png|gif|webp)$/i;
-  
+
   // Allowed MIME types (including variations)
   const allowedMimeTypes = [
     'image/jpeg',
@@ -44,11 +44,11 @@ const fileFilter = (req, file, cb) => {
   // Get file extension
   const ext = path.extname(file.originalname).toLowerCase();
   const isValidExt = allowedExtensions.test(ext);
-  
+
   // Check MIME type (case insensitive)
   const mimetype = file.mimetype?.toLowerCase() || '';
   const isValidMime = allowedMimeTypes.includes(mimetype);
-  
+
   // Also check if MIME type starts with 'image/' (covers most image types)
   const isImageMime = mimetype.startsWith('image/');
 
@@ -78,3 +78,4 @@ export const upload = multer({
   limits: { fileSize: config.maxFileSize },
   fileFilter,
 });
+export default upload;

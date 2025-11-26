@@ -14,6 +14,7 @@ import 'provider/event_provider.dart';
 import 'provider/group_provider.dart';
 import 'provider/user_provider.dart';
 import 'provider/reward_provider.dart';
+import 'provider/offer_provider.dart';
 
 import 'presentation/navigation/main_shell.dart';
 import 'presentation/pages/auth/auth_page.dart';
@@ -37,6 +38,7 @@ import 'presentation/pages/admin/admin_dashboard_page.dart';
 import 'presentation/pages/admin/admin_users_page.dart';
 import 'presentation/pages/admin/admin_events_page.dart';
 import 'presentation/pages/business/business_dashboard_page.dart';
+import 'presentation/pages/business/create_offer_page.dart';
 import 'presentation/pages/business/business_events_page.dart';
 import 'presentation/pages/business/business_partners_page.dart';
 import 'presentation/pages/explore/category_explore_page.dart';
@@ -72,6 +74,7 @@ class _SamparkaAppState extends State<SamparkaApp> {
           ChangeNotifierProvider(create: (_) => UserProvider()),
           ChangeNotifierProvider(create: (_) => GroupProvider()),
           ChangeNotifierProvider(create: (_) => RewardProvider()),
+          ChangeNotifierProvider(create: (_) => OfferProvider()),
         ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -178,6 +181,8 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case BusinessDashboardPage.routeName:
               return MaterialPageRoute(builder: (_) => const BusinessDashboardPage());
+            case CreateOfferPage.routeName:
+              return MaterialPageRoute(builder: (_) => const CreateOfferPage());
 
             case BusinessEventsPage.routeName:
               return MaterialPageRoute(builder: (_) => const BusinessEventsPage());

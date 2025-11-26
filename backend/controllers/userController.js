@@ -35,6 +35,7 @@ export const updateProfile = async (req, res, next) => {
       interests,
       locationLabel,
       location,
+      role,
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -49,6 +50,26 @@ export const updateProfile = async (req, res, next) => {
         type: 'Point',
         coordinates: location.coordinates || [location.longitude, location.latitude],
       };
+    }
+
+    if (role !== undefined) {
+      const allowedRoles = ['member', 'business'];
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid role update request',
+        });
+      }
+
+      // Prevent privilege escalation
+      if (role === 'admin' && user.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to become an admin',
+        });
+      }
+
+      user.role = role;
     }
 
     await user.save();
