@@ -35,7 +35,7 @@ class PermissionHelper {
       if (!storageStatus.isGranted) {
         storageStatus = await Permission.photos.request();
       }
-      
+
       // Fallback to storage permission for older Android versions
       if (!storageStatus.isGranted) {
         final legacyStorageStatus = await Permission.storage.request();
@@ -108,10 +108,10 @@ class PermissionHelper {
   }
 
   static void _showPermissionDialog(
-    BuildContext context,
-    String title,
-    String message,
-  ) {
+      BuildContext context,
+      String title,
+      String message,
+      ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -134,4 +134,3 @@ class PermissionHelper {
     );
   }
 }
-
