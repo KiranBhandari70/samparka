@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../data/models/event_model.dart';
+import '../../../data/services/admin_service.dart';
+import '../../../data/services/event_service.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 
@@ -33,11 +35,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
     });
 
     try {
-      // TODO: Replace with your real API call
-      // Example:
-      // final events = await EventService().getAllEvents();
-
-      final List<EventModel> events = []; // EMPTY initially
+      final events = await AdminService.instance.getAllEvents();
 
       setState(() {
         _allEvents = events;
@@ -144,10 +142,55 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                 arguments: {'event': event},
                               );
                             },
-                            onJoin: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Joined ${event.title}!')),
+                            // For admin, use the "join" action as delete for now
+                            onJoin: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Event'),
+                                  content: Text(
+                                      'Are you sure you want to delete "${event.title}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.accentRed,
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
                               );
+
+                              if (confirm != true) return;
+
+                              try {
+                                await EventService.instance.deleteEvent(event.id);
+                                setState(() {
+                                  _allEvents.removeWhere(
+                                      (e) => e.id == event.id);
+                                });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('Event deleted successfully'),
+                                    backgroundColor: AppColors.accentRed,
+                                  ),
+                                );
+                              } catch (_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Failed to delete event'),
+                                  ),
+                                );
+                              }
                             },
                           ),
                         );

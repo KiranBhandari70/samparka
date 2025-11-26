@@ -8,11 +8,15 @@ import {
   updateInterests,
   getUserEvents,
   getRegisteredUsers,
+  getAllUsersAdmin,
+  setUserBlockedStatus,
 } from '../controllers/userController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 
 const router = express.Router();
+
+// PUBLIC / USER-SCOPED ROUTES
 router.get('/:userId/events', async (req, res, next) => {
   const { userId } = req.params;
 
@@ -28,13 +32,16 @@ router.get('/:userId/events', async (req, res, next) => {
   }
 });
 
-
 // User profile routes (requires authentication)
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 router.post('/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 router.put('/interests', authenticate, updateInterests);
 router.get('/registered', getRegisteredUsers);
+
+// ADMIN ROUTES
+router.get('/admin', authenticate, authorize('admin'), getAllUsersAdmin);
+router.patch('/admin/:userId/block', authenticate, authorize('admin'), setUserBlockedStatus);
 
 export default router;
 

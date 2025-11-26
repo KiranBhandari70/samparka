@@ -123,7 +123,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                           width: 130,
                           child: PrimaryButton(
                             label: _currentIndex == _slides.length - 1
-                                ? 'Get Started'
+                                ? 'Start'
                                 : 'Next',
                             onPressed: _handleNext,
                           ),

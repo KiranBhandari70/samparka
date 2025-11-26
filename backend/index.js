@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 import { config } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import User from './models/User.js';
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
@@ -23,6 +24,47 @@ const __dirname = path.dirname(__filename);
 
 // Connect to database
 connectDB();
+
+// Ensure a default admin user exists (for development / initial setup)
+const ensureAdminUser = async () => {
+  try {
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin) {
+      return;
+    }
+
+    const email = config.adminEmail;
+    const password = config.adminPassword;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({
+        email,
+        name: 'Platform Admin',
+        authProvider: 'email',
+        role: 'admin',
+        verified: true,
+        location: {
+          type: 'Point',
+          coordinates: [0, 0],
+        },
+      });
+    } else {
+      user.role = 'admin';
+    }
+
+    await user.hashPassword(password);
+    await user.save();
+
+    console.log(
+      `Admin user ensured. Email: ${email}, Password: ${password} (change in production!)`
+    );
+  } catch (error) {
+    console.error('Failed to ensure admin user:', error.message);
+  }
+};
+
+ensureAdminUser();
 
 const app = express();
 

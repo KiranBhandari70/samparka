@@ -13,6 +13,7 @@ import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../edit_event/edit_event_page.dart';
 import '../settings/settings_page.dart';
+import '../admin/admin_dashboard_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final UserModel user;
@@ -112,6 +113,19 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 12),
             _buildInterests(),
             const SizedBox(height: 24),
+            if (displayUser.role == 'admin') ...[
+              _MenuTile(
+                icon: Icons.admin_panel_settings,
+                title: 'Admin Dashboard',
+                subtitle: 'Manage users and events',
+                onTap: () {
+                  Navigator.of(context).pushNamed(
+                    AdminDashboardPage.routeName,
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
             Text('My Events', style: AppTextStyles.heading3),
             const SizedBox(height: 12),
             _buildMyEvents(context),

@@ -19,6 +19,10 @@ class ApiEndpoints {
   static const String interests = '$baseUrl/user/interests';
   static const String registeredUsers = '$baseUrl/users/registered';
 
+  // Admin endpoints
+  static const String adminUsers = '$baseUrl/users/admin';
+  static String adminBlockUser(String userId) => '$baseUrl/users/admin/$userId/block';
+
   // Event endpoints
   static const String events = '$baseUrl/events';
   static String eventById(String id) => '$events/$id';

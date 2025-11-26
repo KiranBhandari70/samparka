@@ -3,6 +3,7 @@ import 'package:samparka/config/environment.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../data/services/admin_service.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
@@ -33,12 +34,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     });
 
     try {
-      // TODO: Connect with your backend API
-      // Example usage:
-      // final users = await AdminService().getAllUsers();
-
-      // For now users list is EMPTY until backend is connected
-      final users = <Map<String, dynamic>>[];
+      final users = await AdminService.instance.getAllUsers();
 
       setState(() {
         _users = users;
@@ -91,12 +87,11 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     if (confirm != true) return;
 
     try {
-      // TODO call backend
-      // await AdminService().blockUser(userId);
+      await AdminService.instance.setUserBlocked(userId, true);
 
       setState(() {
-        final user = _users.firstWhere((u) => u['id'] == userId);
-        user['isBlocked'] = true;
+        final user = _users.firstWhere((u) => u['id'] == userId || u['_id'] == userId);
+        user['blocked'] = true;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -114,12 +109,11 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
 
   Future<void> _unblockUser(String userId) async {
     try {
-      // TODO call backend
-      // await AdminService().unblockUser(userId);
+      await AdminService.instance.setUserBlocked(userId, false);
 
       setState(() {
-        final user = _users.firstWhere((u) => u['id'] == userId);
-        user['isBlocked'] = false;
+        final user = _users.firstWhere((u) => u['id'] == userId || u['_id'] == userId);
+        user['blocked'] = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -192,12 +186,12 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     itemCount: _filteredUsers.length,
                     itemBuilder: (context, index) {
                       final user = _filteredUsers[index];
+                      final id = user['id'] ?? user['_id'];
+                      final isBlocked = user['blocked'] as bool? ?? false;
                       return _UserCard(
                         user: user,
-                        onBlock:
-                        user['isBlocked'] ? null : () => _blockUser(user['id']),
-                        onUnblock:
-                        user['isBlocked'] ? () => _unblockUser(user['id']) : null,
+                        onBlock: isBlocked ? null : () => _blockUser(id),
+                        onUnblock: isBlocked ? () => _unblockUser(id) : null,
                       );
                     },
                   ),

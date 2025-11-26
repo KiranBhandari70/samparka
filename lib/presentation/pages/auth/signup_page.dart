@@ -209,12 +209,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 icon: Icons.g_mobiledata_rounded,
                 onTap: _handleSignUp,
               ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: AppStrings.continueWithPhone,
-                icon: Icons.phone_rounded,
-                onTap: _handleSignUp,
-              ),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

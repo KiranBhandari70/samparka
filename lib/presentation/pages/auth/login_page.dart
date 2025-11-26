@@ -115,17 +115,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       validator: Validators.password,
                     ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        child: const Text(
-                          AppStrings.forgotPassword,
-                          style: TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-                    ),
+
                     const SizedBox(height: 24),
                     Consumer<AuthProvider>(
                       builder: (context, authProvider, _) {
@@ -160,12 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                 icon: Icons.g_mobiledata_rounded,
                 onTap: _handleLogin,
               ),
-              const SizedBox(height: 12),
-              _SocialButton(
-                label: AppStrings.continueWithPhone,
-                icon: Icons.phone_rounded,
-                onTap: _handleLogin,
-              ),
+
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

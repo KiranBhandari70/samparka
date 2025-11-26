@@ -130,7 +130,7 @@ export const uploadAvatar = async (req, res, next) => {
   }
 };
 
-// @desc    Get recently registered users
+// @desc    Get recently registered users (public, lightweight)
 // @route   GET /api/v1/users/registered
 // @access  Public
 export const getRegisteredUsers = async (req, res, next) => {
@@ -145,6 +145,69 @@ export const getRegisteredUsers = async (req, res, next) => {
       success: true,
       count: users.length,
       users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all users (admin)
+// @route   GET /api/v1/users/admin
+// @access  Private/Admin
+export const getAllUsersAdmin = async (req, res, next) => {
+  try {
+    const users = await User.find({})
+      .sort({ createdAt: -1 })
+      .select('name email avatarUrl role blocked verified createdAt');
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Block or unblock a user (admin)
+// @route   PATCH /api/v1/users/admin/:userId/block
+// @access  Private/Admin
+export const setUserBlockedStatus = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { blocked } = req.body;
+
+    if (typeof blocked !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid blocked value. Expected boolean.',
+      });
+    }
+
+    // Prevent admin from blocking themselves
+    if (userId === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Admins cannot block themselves.',
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    user.blocked = blocked;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: blocked ? 'User blocked successfully' : 'User unblocked successfully',
+      user: user.toJSON(),
     });
   } catch (error) {
     next(error);

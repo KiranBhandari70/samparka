@@ -23,5 +23,8 @@ export const config = {
   // Esewa Payment
   esewaMerchantCode: process.env.ESEWA_MERCHANT_CODE || 'EPAYTEST',
   esewaVerifyUrl: process.env.ESEWA_VERIFY_URL || 'https://uat.esewa.com.np/epay/transrec',
+  // Admin account (for initial seeding)
+  adminEmail: process.env.ADMIN_EMAIL || 'admin@samparka.com',
+  adminPassword: process.env.ADMIN_PASSWORD || 'Admin@12345',
 };
 

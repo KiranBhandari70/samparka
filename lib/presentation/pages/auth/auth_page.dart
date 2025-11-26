@@ -213,37 +213,7 @@ class _AuthPageState extends State<AuthPage> {
                             hintText: AppStrings.passwordPlaceholder,
                           ),
                         ),
-                        if (_isLogin) ...[
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              child: const Text(
-                                AppStrings.forgotPassword,
-                                style: TextStyle(color: AppColors.primary),
-                              ),
-                            ),
-                          ),
-                        ] else ...[
-                          const SizedBox(height: 16),
-                          Row(
-                            children: const [
-                              Icon(Icons.check_circle,
-                                  size: 20, color: AppColors.primary),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Password must be at least 8 characters',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+
                         const SizedBox(height: 24),
                         Consumer<AuthProvider>(
                           builder: (context, authProvider, _) {
@@ -285,11 +255,7 @@ class _AuthPageState extends State<AuthPage> {
                           onTap: _submit,
                         ),
                         const SizedBox(height: 12),
-                        _SocialButton(
-                          label: AppStrings.continueWithPhone,
-                          icon: Icons.phone_rounded,
-                          onTap: _submit,
-                        ),
+
                       ],
                     ),
                   ),
@@ -302,13 +268,8 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: () =>
-                        Navigator.of(context).pushReplacementNamed(
-                          OnboardingPage.routeName,
-                        ),
-                    child: const Text('Back to Onboarding'),
-                  ),
+
+
                 ],
               ),
             ),

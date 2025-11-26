@@ -65,55 +65,15 @@ class AdminDashboardPage extends StatelessWidget {
                         Navigator.of(context).pushNamed(AdminEventsPage.routeName);
                       },
                     ),
-                    _AdminCard(
-                      icon: Icons.block,
-                      title: 'Blocked Users',
-                      subtitle: 'View blocked users',
-                      color: AppColors.accentRed,
-                      onTap: () {
-                        Navigator.of(context).pushNamed('/admin-blocked-users');
-                      },
-                    ),
-                    _AdminCard(
-                      icon: Icons.report,
-                      title: 'Reports',
-                      subtitle: 'View reports',
-                      color: AppColors.accentYellow,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Reports feature coming soon')),
-                        );
-                      },
-                    ),
+
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Quick Stats',
-                      style: AppTextStyles.heading3,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: const [
-                        _StatItem(label: 'Total Users', value: '1,234'),
-                        _StatItem(label: 'Active Events', value: '56'),
-                        _StatItem(label: 'Blocked', value: '12'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+
+
+
+
+
             ],
           ),
         ),
@@ -165,7 +125,7 @@ class _AdminCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 32),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             Text(
               title,
               style: AppTextStyles.heading3,
@@ -202,7 +162,7 @@ class _StatItem extends StatelessWidget {
             color: AppColors.primary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 10),
         Text(
           label,
           style: AppTextStyles.caption,
