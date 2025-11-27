@@ -136,35 +136,7 @@ class _RewardsDashboardPageState extends State<RewardsDashboardPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 200,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    _PartnerCard(
-                      name: 'Coffee Shop',
-                      discount: '20% OFF',
-                      pointsRequired: 500,
-                      imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4c7c98?w=400',
-                    ),
-                    SizedBox(width: 16),
-                    _PartnerCard(
-                      name: 'Restaurant',
-                      discount: '15% OFF',
-                      pointsRequired: 400,
-                      imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
-                    ),
-                    SizedBox(width: 16),
-                    _PartnerCard(
-                      name: 'Cinema',
-                      discount: 'Free Ticket',
-                      pointsRequired: 300,
-                      imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
-                    ),
-                  ],
-                ),
-              ),
+
               const SizedBox(height: 24),
               Text(
                 'Recent Activity',
