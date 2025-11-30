@@ -131,4 +131,35 @@ class UserProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+  Future<bool> submitVerification({
+    required String phoneNumber,
+    required String citizenshipFrontPath,
+    required String citizenshipBackPath,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final success = await _profileService.submitVerification(
+        phoneNumber: phoneNumber,
+        citizenshipFrontPath: citizenshipFrontPath,
+        citizenshipBackPath: citizenshipBackPath,
+      );
+
+      if (success) {
+        // Refresh user profile to get updated verification status
+        await loadProfile();
+      }
+
+      _setLoading(false);
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
 }

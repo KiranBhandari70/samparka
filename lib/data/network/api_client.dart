@@ -127,6 +127,7 @@ class ApiClient {
     Map<String, String>? fields,
     File? file,
     String fileFieldName = 'image',
+    List<Map<String, dynamic>>? files,
   }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
     final request = http.MultipartRequest('POST', uri);
@@ -142,13 +143,53 @@ class ApiClient {
       request.fields.addAll(fields);
     }
 
-    // Add file if provided
-    if (file != null && await file.exists()) {
+    // Add multiple files if provided
+    if (files != null) {
+      for (final fileData in files) {
+        final file = fileData['file'] as File;
+        final fieldName = fileData['fieldName'] as String;
+        if (await file.exists()) {
+          final fileStream = http.ByteStream(file.openRead());
+          final fileLength = await file.length();
+          final fileName = file.path.split(Platform.pathSeparator).last;
+
+          // Determine content type from file extension
+          String contentType;
+          final ext = fileName.toLowerCase().split('.').last;
+          switch (ext) {
+            case 'jpg':
+            case 'jpeg':
+              contentType = 'image/jpeg';
+              break;
+            case 'png':
+              contentType = 'image/png';
+              break;
+            case 'gif':
+              contentType = 'image/gif';
+              break;
+            case 'webp':
+              contentType = 'image/webp';
+              break;
+            default:
+              contentType = 'image/jpeg';
+          }
+
+          final multipartFile = http.MultipartFile(
+            fieldName,
+            fileStream,
+            fileLength,
+            filename: fileName,
+            contentType: http.MediaType.parse(contentType),
+          );
+          request.files.add(multipartFile);
+        }
+      }
+    } else if (file != null && await file.exists()) {
+      // Single file support (backward compatibility)
       final fileStream = http.ByteStream(file.openRead());
       final fileLength = await file.length();
       final fileName = file.path.split(Platform.pathSeparator).last;
 
-      // Determine content type from file extension
       String contentType;
       final ext = fileName.toLowerCase().split('.').last;
       switch (ext) {
@@ -166,7 +207,7 @@ class ApiClient {
           contentType = 'image/webp';
           break;
         default:
-          contentType = 'image/jpeg'; // Default fallback
+          contentType = 'image/jpeg';
       }
 
       final multipartFile = http.MultipartFile(

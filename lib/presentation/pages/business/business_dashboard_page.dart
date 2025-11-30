@@ -1,15 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../provider/auth_provider.dart';
 import '../../widgets/primary_button.dart';
 import 'business_events_page.dart';
 import 'business_partners_page.dart';
+import 'business_details_form_page.dart';
 
 class BusinessDashboardPage extends StatelessWidget {
   const BusinessDashboardPage({super.key});
 
   static const String routeName = '/business-dashboard';
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final user = authProvider.userModel;
+        
+        // Check if user has business details, if not redirect to form
+        if (user != null && user.role == 'business' && user.businessProfile == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed(
+              BusinessDetailsFormPage.routeName,
+            );
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        return _BusinessDashboardContent();
+      },
+    );
+  }
+}
+
+class _BusinessDashboardContent extends StatelessWidget {
+  const _BusinessDashboardContent();
+
+  bool get mounted => true;
 
   @override
   Widget build(BuildContext context) {
@@ -102,8 +134,17 @@ class BusinessDashboardPage extends StatelessWidget {
                 title: 'Add Discount Offer',
                 description: 'Create discount tie-ups for reward redemption',
                 color: AppColors.accentGreen,
-                onTap: () {
-                  Navigator.of(context).pushNamed('/create-offer');
+                onTap: () async {
+                  final result = await Navigator.of(context).pushNamed('/create-offer');
+                  // Refresh offers if offer was created successfully
+                  if (result == true) {
+                    // The offer provider should already have the new offer
+                    // But we can trigger a refresh if needed
+                    if (mounted) {
+                      // Optionally refresh the page or reload offers
+                      // The offer provider already updates its list when creating
+                    }
+                  }
                 },
               ),
               const SizedBox(height: 24),

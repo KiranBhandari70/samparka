@@ -5,11 +5,13 @@ import 'package:esewa_flutter/esewa_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
 import '../../../config/environment.dart';
 import '../../../data/services/reward_service.dart';
+import '../../../provider/ticket_provider.dart';
 
 class TicketPurchasePage extends StatefulWidget {
   final EventModel event;
@@ -77,12 +79,32 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
           if (kDebugMode) print('Payment saved successfully');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Ticket purchased successfully!"),
-              backgroundColor: Colors.green,
-            ),
-          );
+          
+          // Refresh ticket provider to show newly purchased tickets
+          try {
+            final ticketProvider = Provider.of<TicketProvider>(context, listen: false);
+            await ticketProvider.loadUserTickets(widget.userId);
+            if (kDebugMode) print('Tickets refreshed successfully');
+          } catch (e) {
+            if (kDebugMode) print('Error refreshing tickets: $e');
+          }
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Ticket purchased successfully!"),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            
+            // Navigate back after a short delay to allow user to see the success message
+            await Future.delayed(const Duration(milliseconds: 1500));
+            
+            if (mounted) {
+              Navigator.of(context).pop(true); // Return true to indicate success
+            }
+          }
         } else {
           if (kDebugMode) print('Payment verification failed: ${responseData['verificationError']}');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +136,7 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
   }
 
   /// Payment callbacks
-  void _onPaymentSuccess(EsewaPaymentResponse response) async {
+  void _onPaymentSuccess(EsewaPaymentResponse response) {
     final referenceId = response.data; // Transaction reference ID
     setState(() {
       paymentData = referenceId ?? '';
@@ -123,14 +145,25 @@ class _TicketPurchasePageState extends State<TicketPurchasePage> {
     });
 
     if (referenceId != null && referenceId.isNotEmpty) {
-      await _savePaymentToBackend(referenceId);
+      // Call async function without awaiting in callback
+      _savePaymentToBackend(referenceId).then((_) {
+        if (mounted) {
+          setState(() => isSaving = false);
+        }
+      }).catchError((e) {
+        if (mounted) {
+          setState(() => isSaving = false);
+        }
+      });
+    } else {
+      setState(() => isSaving = false);
     }
 
-    setState(() => isSaving = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Payment Successful")),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Payment Successful")),
+      );
+    }
 
     _generatePid(); // regenerate pid for next purchase
   }

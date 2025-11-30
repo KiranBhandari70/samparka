@@ -10,6 +10,9 @@ import {
   getRegisteredUsers,
   getAllUsersAdmin,
   setUserBlockedStatus,
+  submitVerification,
+  getPendingVerifications,
+  reviewVerification,
 } from '../controllers/userController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
@@ -37,11 +40,17 @@ router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 router.post('/avatar', authenticate, upload.single('avatar'), uploadAvatar);
 router.put('/interests', authenticate, updateInterests);
+router.post('/verification', authenticate, upload.fields([
+  { name: 'citizenshipFront', maxCount: 1 },
+  { name: 'citizenshipBack', maxCount: 1 },
+]), submitVerification);
 router.get('/registered', getRegisteredUsers);
 
 // ADMIN ROUTES
 router.get('/admin', authenticate, authorize('admin'), getAllUsersAdmin);
+router.get('/admin/verifications', authenticate, authorize('admin'), getPendingVerifications);
 router.patch('/admin/:userId/block', authenticate, authorize('admin'), setUserBlockedStatus);
+router.patch('/admin/:userId/verification', authenticate, authorize('admin'), reviewVerification);
 
 export default router;
 

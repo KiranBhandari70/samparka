@@ -262,17 +262,6 @@ class OfferProvider extends ChangeNotifier {
   }
 
   // Filter offers by category
-  List<OfferModel> getOffersByCategory(String category) {
-    if (category == 'all') return _allOffers;
-    return _allOffers.where((offer) => offer.category == category).toList();
-  }
-
-  // Filter offers by points range
-  List<OfferModel> getOffersByPointsRange(int minPoints, int maxPoints) {
-    return _allOffers.where((offer) {
-      return offer.pointsRequired >= minPoints && offer.pointsRequired <= maxPoints;
-    }).toList();
-  }
 
   // Get available offers only
   List<OfferModel> get availableOffers {

@@ -131,4 +131,38 @@ class UserRepository {
       throw Exception('Error fetching user events: $e');
     }
   }
+
+  Future<bool> submitVerification({
+    required String phoneNumber,
+    required String citizenshipFrontPath,
+    required String citizenshipBackPath,
+  }) async {
+    try {
+      final frontFile = File(citizenshipFrontPath);
+      final backFile = File(citizenshipBackPath);
+
+      if (!await frontFile.exists() || !await backFile.exists()) {
+        throw Exception('Citizenship card images not found');
+      }
+
+      final response = await _apiClient.postMultipart(
+        ApiEndpoints.submitVerification,
+        fields: {'phoneNumber': phoneNumber},
+        files: [
+          {'file': frontFile, 'fieldName': 'citizenshipFront'},
+          {'file': backFile, 'fieldName': 'citizenshipBack'},
+        ],
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      final errorData = _apiClient.parseResponse(response);
+      final errorMessage = errorData?['message'] as String?;
+      throw Exception(errorMessage ?? 'Failed to submit verification: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error submitting verification: $e');
+    }
+  }
 }

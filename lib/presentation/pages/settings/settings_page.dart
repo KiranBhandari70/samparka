@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
@@ -19,6 +21,21 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  String _viewMode = 'default';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadViewMode();
+  }
+
+  Future<void> _loadViewMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _viewMode = prefs.getString('profile_view_mode') ?? 'default';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,24 +51,78 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         children: [
           // ACCOUNT SECTION
-          _SettingsSection(
-            title: 'Account',
-            items: [
-              SettingsItem(
-                icon: Icons.edit_rounded,
-                title: 'Edit Profile',
-                onTap: () {
-                  Navigator.of(context).pushNamed(EditProfilePage.routeName);
-                },
-              ),
-              SettingsItem(
-                icon: Icons.lock_rounded,
-                title: 'Privacy and Security',
-                onTap: () {
-                  Navigator.pushNamed(context, PrivacySecurityScreen.routeName);
-                },
-              ),
-            ],
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              final user = authProvider.userModel;
+              final List<SettingsItem> accountItems = [
+                SettingsItem(
+                  icon: Icons.edit_rounded,
+                  title: 'Edit Profile',
+                  onTap: () {
+                    Navigator.of(context).pushNamed(EditProfilePage.routeName);
+                  },
+                ),
+                SettingsItem(
+                  icon: Icons.lock_rounded,
+                  title: 'Privacy and Security',
+                  onTap: () {
+                    Navigator.pushNamed(context, PrivacySecurityScreen.routeName);
+                  },
+                ),
+              ];
+
+              // Add account switching for business users
+              if (user != null && user.role == 'business') {
+                if (_viewMode == 'normal') {
+                  accountItems.insert(
+                    1,
+                    SettingsItem(
+                      icon: Icons.business_rounded,
+                      title: 'Switch to Business View',
+                      onTap: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('profile_view_mode', 'business');
+                        
+                        if (mounted) {
+                          setState(() {
+                            _viewMode = 'business';
+                          });
+                          // Navigate back and refresh the main shell
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushReplacementNamed('/home');
+                        }
+                      },
+                    ),
+                  );
+                } else {
+                  accountItems.insert(
+                    1,
+                    SettingsItem(
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Switch to Normal User View',
+                      onTap: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('profile_view_mode', 'normal');
+                        
+                        if (mounted) {
+                          setState(() {
+                            _viewMode = 'normal';
+                          });
+                          // Navigate back and refresh the main shell
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushReplacementNamed('/home');
+                        }
+                      },
+                    ),
+                  );
+                }
+              }
+
+              return _SettingsSection(
+                title: 'Account',
+                items: accountItems,
+              );
+            },
           ),
           const SizedBox(height: 24),
 
@@ -78,7 +149,7 @@ class _SettingsPageState extends State<SettingsPage> {
           // SUPPORT SECTION
           _SettingsSection(
             title: 'Support',
-            items: [
+            items:[
               SettingsItem(
                 icon: Icons.help,
                 title: 'Help Center',

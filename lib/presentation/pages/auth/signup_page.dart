@@ -87,7 +87,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await FirebaseAuth.instance.signInWithCredential(credential);
 
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.setUserFromFirebase(userCredential.user);
+      // TODO: Implement Firebase user sync with backend
 
       // Navigate to interests selection if first login
       Navigator.of(context).pushReplacement(

@@ -12,7 +12,12 @@
           "package_name": "com.Samparka.samparka"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "823355742434-gs34r10b6tt0tk28pcggor4blo4ong1a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAm1_AXxq-xjBoSPAKaU_AwzL2NBjGBSC8"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "823355742434-gs34r10b6tt0tk28pcggor4blo4ong1a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

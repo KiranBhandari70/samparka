@@ -147,7 +147,7 @@ class GroupDetailPage extends StatelessWidget {
 
                     if (joined) {
                       // Fetch updated group data with correct member list
-                      await groupProvider.fetchGroupById(currentGroup.id);
+                      await groupProvider.loadGroupDetails(currentGroup.id);
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

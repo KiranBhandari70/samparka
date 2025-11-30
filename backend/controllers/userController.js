@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 
 import User from '../models/User.js';
 import Event from '../models/Event.js';
+import BusinessProfile from '../models/BusinessProfile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,7 +14,7 @@ const __dirname = path.dirname(__filename);
 // @access  Private
 export const getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).populate('businessProfile');
     res.json({
       success: true,
       user: user.toJSON(),
@@ -36,6 +37,7 @@ export const updateProfile = async (req, res, next) => {
       locationLabel,
       location,
       role,
+      businessDetails,
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -72,13 +74,66 @@ export const updateProfile = async (req, res, next) => {
       user.role = role;
     }
 
+    // Handle business profile creation/update
+    if (businessDetails) {
+      // Check if user already has a business profile
+      if (user.businessProfile) {
+        // Update existing business profile
+        const businessProfile = await BusinessProfile.findById(user.businessProfile);
+        if (businessProfile) {
+          businessProfile.businessName = businessDetails.businessName;
+          businessProfile.businessType = businessDetails.businessType;
+          businessProfile.businessDescription = businessDetails.businessDescription;
+          businessProfile.businessAddress = businessDetails.businessAddress;
+          businessProfile.businessPhone = businessDetails.businessPhone;
+          if (businessDetails.businessEmail) businessProfile.businessEmail = businessDetails.businessEmail;
+          if (businessDetails.businessWebsite) businessProfile.businessWebsite = businessDetails.businessWebsite;
+          await businessProfile.save();
+        }
+      } else {
+        // Check if user already has a business profile (prevent duplicate)
+        const existingProfile = await BusinessProfile.findOne({ owner: user._id });
+        if (existingProfile) {
+          return res.status(400).json({
+            success: false,
+            message: 'You already have a business profile registered',
+          });
+        }
+
+        // Create new business profile
+        const businessProfile = new BusinessProfile({
+          businessName: businessDetails.businessName,
+          businessType: businessDetails.businessType,
+          businessDescription: businessDetails.businessDescription,
+          businessAddress: businessDetails.businessAddress,
+          businessPhone: businessDetails.businessPhone,
+          businessEmail: businessDetails.businessEmail || undefined,
+          businessWebsite: businessDetails.businessWebsite || undefined,
+          owner: user._id,
+        });
+
+        await businessProfile.save();
+        user.businessProfile = businessProfile._id;
+      }
+    }
+
     await user.save();
+
+    // Populate business profile if it exists
+    await user.populate('businessProfile');
 
     res.json({
       success: true,
       user: user.toJSON(),
     });
   } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have a business profile registered',
+      });
+    }
     next(error);
   }
 };
@@ -135,11 +190,12 @@ export const uploadAvatar = async (req, res, next) => {
 // @access  Public
 export const getRegisteredUsers = async (req, res, next) => {
   try {
-    const limit = Math.min(Number(req.query.limit) || 10, 50);
+    // Allow higher limit for "see all" functionality, but cap at 1000 for performance
+    const limit = Math.min(Number(req.query.limit) || 10, 1000);
     const users = await User.find({})
       .sort({ createdAt: -1 })
       .limit(limit)
-      .select('name avatarUrl interests locationLabel role createdAt');
+      .select('name email avatarUrl interests locationLabel role verified bio createdAt');
 
     res.json({
       success: true,
@@ -252,6 +308,149 @@ export const getUserEvents = async (req, res, next) => {
     res.json({
       success: true,
       events,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Submit verification documents
+// @route   POST /api/v1/user/verification
+// @access  Private
+export const submitVerification = async (req, res, next) => {
+  try {
+    const { phoneNumber } = req.body;
+    const citizenshipFront = req.files?.citizenshipFront?.[0];
+    const citizenshipBack = req.files?.citizenshipBack?.[0];
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required',
+      });
+    }
+
+    if (!citizenshipFront || !citizenshipBack) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both citizenship card front and back photos are required',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Check if already verified
+    if (user.verified) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is already verified',
+      });
+    }
+
+    // Check if already pending
+    if (user.verificationStatus === 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification request is already pending review',
+      });
+    }
+
+    // Save file paths
+    const citizenshipFrontUrl = `/uploads/${citizenshipFront.filename}`;
+    const citizenshipBackUrl = `/uploads/${citizenshipBack.filename}`;
+
+    // Update user verification data
+    user.verificationData = {
+      phoneNumber,
+      citizenshipFrontUrl,
+      citizenshipBackUrl,
+      submittedAt: new Date(),
+    };
+    user.verificationStatus = 'pending';
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Verification documents submitted successfully. Admin will review your request.',
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get pending verification requests (admin)
+// @route   GET /api/v1/users/admin/verifications
+// @access  Private/Admin
+export const getPendingVerifications = async (req, res, next) => {
+  try {
+    const users = await User.find({ verificationStatus: 'pending' })
+      .select('name email avatarUrl verificationData verificationStatus createdAt')
+      .sort({ 'verificationData.submittedAt': -1 });
+
+    res.json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Approve or reject verification (admin)
+// @route   PATCH /api/v1/users/admin/:userId/verification
+// @access  Private/Admin
+export const reviewVerification = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { action, rejectionReason } = req.body; // action: 'approve' or 'reject'
+
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Action must be either "approve" or "reject"',
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.verificationStatus !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'User verification is not in pending status',
+      });
+    }
+
+    if (action === 'approve') {
+      user.verificationStatus = 'approved';
+      user.verified = true;
+      user.verificationData.reviewedAt = new Date();
+      user.verificationData.reviewedBy = req.user._id;
+      if (user.verificationData.rejectionReason) {
+        user.verificationData.rejectionReason = undefined;
+      }
+    } else {
+      user.verificationStatus = 'rejected';
+      user.verified = false;
+      user.verificationData.reviewedAt = new Date();
+      user.verificationData.reviewedBy = req.user._id;
+      user.verificationData.rejectionReason = rejectionReason || 'Verification rejected by admin';
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Verification ${action === 'approve' ? 'approved' : 'rejected'} successfully`,
+      user: user.toJSON(),
     });
   } catch (error) {
     next(error);

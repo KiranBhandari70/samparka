@@ -7,7 +7,7 @@ import '../../../data/models/event_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../provider/auth_provider.dart';
 import '../../../provider/event_provider.dart';
-import '../events/ticket_purchase_page.dart';
+import 'ticket_purchase_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventDetailPage extends StatefulWidget {

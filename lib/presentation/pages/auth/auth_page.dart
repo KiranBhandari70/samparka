@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +9,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
 import '../../../provider/user_provider.dart';
 import '../../widgets/primary_button.dart';
-import '../onboarding/onboarding_page.dart';
+import '../splash/onboarding_page.dart';
 import '../auth/interests_selection_page.dart';
 import '../../navigation/main_shell.dart';
 
@@ -41,10 +42,12 @@ class _AuthPageState extends State<AuthPage> {
   // IMPORTANT: Replace this with your actual Web client ID from Google Cloud console
   // (the same one used as GOOGLE_CLIENT_ID on the backend).
   // Without serverClientId, google_sign_in will not provide an idToken on Android/iOS.
+  // Get this from: Firebase Console > Project Settings > Your App > OAuth 2.0 Client IDs > Web client
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    // TODO: put your real web client ID here:
-    serverClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+    // TODO: Replace with your actual Web Client ID from Firebase Console
+    // You can find it in: Firebase Console > Project Settings > Your App > OAuth 2.0 Client IDs
+    serverClientId: null, // Will be set from environment or Firebase config
   );
 
   @override
@@ -106,12 +109,17 @@ class _AuthPageState extends State<AuthPage> {
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authProvider.error ?? 'Authentication failed'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // Show error message
+      final errorMessage = authProvider.error ?? 'Authentication failed';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     }
   }
 
@@ -120,6 +128,23 @@ class _AuthPageState extends State<AuthPage> {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
 
     try {
+      // Check if Google Sign-In is properly configured
+      if (_googleSignIn.serverClientId == '' ||
+          _googleSignIn.serverClientId == '823355742434-gs34r10b6tt0tk28pcggor4blo4ong1a.apps.googleusercontent.com') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Google Sign-In is not configured. Please add your Web Client ID in auth_page.dart',
+              ),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
       final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         // User cancelled
@@ -129,7 +154,7 @@ class _AuthPageState extends State<AuthPage> {
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
       if (idToken == null) {
-        throw Exception('Failed to get Google ID token');
+        throw Exception('Failed to get Google ID token. Please check your OAuth configuration.');
       }
 
       final success = await authProvider.loginWithGoogle(idToken);
@@ -166,6 +191,34 @@ class _AuthPageState extends State<AuthPage> {
           SnackBar(
             content: Text(authProvider.error ?? 'Google sign-in failed'),
             backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } on PlatformException catch (e) {
+      String errorMessage = 'Google sign-in failed';
+      
+      // Handle specific error codes
+      if (e.code == '12500') {
+        errorMessage = 'Google Sign-In is not configured properly.\n\n'
+            'Please:\n'
+            '1. Add SHA-1 fingerprint to Firebase Console\n'
+            '2. Get Web Client ID from Firebase/Google Cloud Console\n'
+            '3. Update serverClientId in auth_page.dart\n\n'
+            'See GOOGLE_SIGNIN_SETUP.md for detailed instructions.';
+      } else if (e.code == '10') {
+        errorMessage = 'Google Sign-In error: Developer error. Check your configuration.';
+      } else if (e.code == '12501') {
+        errorMessage = 'Sign-in was cancelled by user.';
+      } else {
+        errorMessage = 'Google sign-in error (${e.code}): ${e.message ?? "Unknown error"}';
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 8),
           ),
         );
       }

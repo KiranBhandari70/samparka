@@ -17,28 +17,47 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final button = ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+    final button = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: AppColors.primaryGradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTextStyles.button,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            spreadRadius: 0,
           ),
-          const SizedBox(width: 8),
-          const Icon(Icons.arrow_forward_rounded, size: 20),
         ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: AppTextStyles.button,
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.arrow_forward_rounded, size: 20),
+          ],
+        ),
       ),
     );
 
@@ -48,33 +67,4 @@ class PrimaryButton extends StatelessWidget {
     return button;
   }
 }
-
-class SecondaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-
-  const SecondaryButton({
-    super.key,
-    required this.label,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
-        ),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.button.copyWith(color: AppColors.textPrimary),
-      ),
-    );
-  }
-}
-
 

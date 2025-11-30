@@ -1,4 +1,7 @@
+import 'package:http/http.dart' as apiClient;
+
 import '../models/user_model.dart';
+import '../network/api_endpoints.dart';
 import '../repositories/user_repository.dart';
 
 class ProfileService {
@@ -25,5 +28,17 @@ class ProfileService {
 
   Future<List<UserModel>> getRegisteredUsers({int limit = 10}) {
     return _repository.getRegisteredUsers(limit: limit);
+  }
+
+  Future<bool> submitVerification({
+    required String phoneNumber,
+    required String citizenshipFrontPath,
+    required String citizenshipBackPath,
+  }) async {
+    return _repository.submitVerification(
+      phoneNumber: phoneNumber,
+      citizenshipFrontPath: citizenshipFrontPath,
+      citizenshipBackPath: citizenshipBackPath,
+    );
   }
 }
