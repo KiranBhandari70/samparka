@@ -7,8 +7,8 @@ import '../../../data/models/event_model.dart';
 import '../../../provider/event_provider.dart';
 import '../../../provider/auth_provider.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
-import '../edit_event/edit_event_page.dart';
+import '../events/event_detail_page.dart';
+import '../events/edit_event_page.dart';
 
 class MyEventsPage extends StatefulWidget {
   const MyEventsPage({super.key});

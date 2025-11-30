@@ -9,7 +9,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
 import '../../../provider/user_provider.dart';
 import '../../widgets/primary_button.dart';
-import '../onboarding/onboarding_page.dart';
+import '../splash/onboarding_page.dart';
 import '../auth/interests_selection_page.dart';
 import '../../navigation/main_shell.dart';
 

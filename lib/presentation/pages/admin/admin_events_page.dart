@@ -6,7 +6,7 @@ import '../../../data/models/event_model.dart';
 import '../../../data/services/admin_service.dart';
 import '../../../data/services/event_service.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
+import '../events/event_detail_page.dart';
 
 class AdminEventsPage extends StatefulWidget {
   const AdminEventsPage({super.key});

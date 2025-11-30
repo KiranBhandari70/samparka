@@ -9,7 +9,7 @@ import '../../../data/models/ticket_model.dart';
 import '../../../provider/ticket_provider.dart';
 import '../../../provider/auth_provider.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
+import '../events/event_detail_page.dart';
 
 class SavedEventsPage extends StatefulWidget {
   const SavedEventsPage({super.key});

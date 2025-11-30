@@ -10,7 +10,7 @@ import '../../../data/models/user_model.dart';
 import '../../../provider/event_provider.dart';
 import '../../../provider/user_provider.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
+import '../events/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
 import 'AllUsersPage.dart';
 

@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../provider/auth_provider.dart';
-import '../onboarding/onboarding_page.dart';
+import 'onboarding_page.dart';
 import '../../navigation/main_shell.dart';
 
 class SplashPage extends StatefulWidget {

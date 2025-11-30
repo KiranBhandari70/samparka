@@ -6,7 +6,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
 import '../../../provider/event_provider.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
+import '../events/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
 
 class HomePage extends StatefulWidget {

@@ -4,7 +4,7 @@ import '../../data/models/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/user_model.dart';
-import '../pages/add_event/add_event_page.dart';
+import '../pages/events/add_event_page.dart';
 import '../pages/explore/explore_page.dart';
 import '../pages/groups/groups_list_page.dart';
 import '../pages/home/home_page.dart';
