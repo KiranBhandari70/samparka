@@ -61,13 +61,22 @@ class AuthProvider extends ChangeNotifier {
     try {
       final response = await _authService.login(email, password);
       // Backend returns { success: true, user: {...}, token: "..." }
-      _userData = response['user'] ?? response;
-      _isAuthenticated = true;
-      _setLoading(false);
-      notifyListeners();
-      return true;
+      if (response['success'] == true && response['user'] != null) {
+        _userData = response['user'];
+        _isAuthenticated = true;
+        _setLoading(false);
+        notifyListeners();
+        return true;
+      } else {
+        throw Exception(response['message'] ?? 'Login failed');
+      }
     } catch (e) {
-      _setError(e.toString());
+      // Extract clean error message
+      String errorMsg = e.toString();
+      if (errorMsg.startsWith('Exception: ')) {
+        errorMsg = errorMsg.substring(11);
+      }
+      _setError(errorMsg);
       _setLoading(false);
       notifyListeners();
       return false;
@@ -125,7 +134,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (response == null || response['success'] != true) {
-        throw Exception("Registration failed");
+        throw Exception(response?['message'] ?? "Registration failed");
       }
 
       // Save user & token
@@ -138,7 +147,12 @@ class AuthProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      _setError(e.toString());
+      // Extract clean error message
+      String errorMsg = e.toString();
+      if (errorMsg.startsWith('Exception: ')) {
+        errorMsg = errorMsg.substring(11);
+      }
+      _setError(errorMsg);
       _setLoading(false);
       notifyListeners();
       return false;
@@ -163,22 +177,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> forgotPassword(String email) async {
-    _setLoading(true);
-    _clearError();
 
-    try {
-      await _authService.forgotPassword(email);
-      _setLoading(false);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
-      return false;
-    }
-  }
 
   Future<void> refreshUser() async {
     try {
@@ -191,28 +190,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> resetPassword({
-    required String token,
-    required String newPassword,
-  }) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      await _authService.resetPassword(
-        token: token,
-        newPassword: newPassword,
-      );
-      _setLoading(false);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
-      return false;
-    }
-  }
 
   void _setLoading(bool value) {
     _isLoading = value;
@@ -231,5 +208,4 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setUserFromFirebase(User? user) async {}
 }

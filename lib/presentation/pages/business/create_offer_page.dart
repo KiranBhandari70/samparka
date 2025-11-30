@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -103,8 +104,27 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
     }
   }
 
+  void _resetForm() {
+    _titleController.clear();
+    _descriptionController.clear();
+    _businessNameController.clear();
+    _discountValueController.clear();
+    _pointsRequiredController.clear();
+    _termsController.clear();
+    _maxRedemptionsController.clear();
+    _selectedCategory = 'food';
+    _selectedDiscountType = 'percentage';
+    _validUntil = null;
+    _imageFile = null;
+    _formKey.currentState?.reset();
+    setState(() {});
+  }
+
   Future<void> _createOffer() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    
     if (_validUntil == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -115,6 +135,8 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
       return;
     }
 
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -122,6 +144,10 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final offerProvider = Provider.of<OfferProvider>(context, listen: false);
+
+      if (kDebugMode) {
+        print('Creating offer with userId: ${authProvider.currentUserId}');
+      }
 
       final success = await offerProvider.createOffer(
         userId: authProvider.currentUserId!,
@@ -142,41 +168,88 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
             : null,
       );
 
+      if (!mounted) return;
+
       if (success) {
+        if (kDebugMode) {
+          print('Offer created successfully');
+        }
+        
+        // Reset loading state first
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+        
+        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Offer created successfully!'),
               backgroundColor: AppColors.accentGreen,
+              duration: Duration(seconds: 2),
             ),
           );
-          Navigator.of(context).pop();
+        }
+        
+        // Wait a bit for the snackbar to show
+        await Future.delayed(const Duration(milliseconds: 1200));
+        
+        if (mounted) {
+          // Check if we can pop (i.e., we were navigated to, not in a tab)
+          final canPop = Navigator.of(context).canPop();
+          
+          if (canPop) {
+            // Pop with success result so the previous page can refresh
+            Navigator.of(context).pop(true);
+            if (kDebugMode) {
+              print('Navigated back from create offer page with success');
+            }
+          } else {
+            // We're in a tab, so just reset the form
+            _resetForm();
+            if (kDebugMode) {
+              print('Offer created, form reset (in tab view)');
+            }
+          }
         }
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(offerProvider.error ?? 'Failed to create offer'),
-              backgroundColor: AppColors.accentRed,
-            ),
-          );
+        if (kDebugMode) {
+          print('Offer creation failed: ${offerProvider.error}');
         }
-      }
-    } catch (e) {
-      if (mounted) {
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(offerProvider.error ?? 'Failed to create offer'),
             backgroundColor: AppColors.accentRed,
+            duration: const Duration(seconds: 3),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
+        
         setState(() {
           _isLoading = false;
         });
       }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Exception creating offer: $e');
+        print('Stack trace: $stackTrace');
+      }
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error creating offer: ${e.toString()}'),
+          backgroundColor: AppColors.accentRed,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 

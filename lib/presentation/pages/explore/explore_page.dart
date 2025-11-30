@@ -12,6 +12,7 @@ import '../../../provider/user_provider.dart';
 import '../../widgets/event_card.dart';
 import '../home/event_detail_page.dart';
 import '../events/ticket_purchase_page.dart';
+import 'AllUsersPage.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -84,7 +85,7 @@ class _ExplorePageState extends State<ExplorePage> {
                 AppStrings.exploreHeading,
                 style: AppTextStyles.heading2,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
               Text(
                 AppStrings.exploreSubtitle,
                 style: AppTextStyles.subtitle,
@@ -134,7 +135,9 @@ class _ExplorePageState extends State<ExplorePage> {
                 children: [
                   Text('Registered Users', style: AppTextStyles.heading3),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(context).pushNamed(AllUsersPage.routeName);
+                    },
                     child: Text(
                       'See All',
                       style: AppTextStyles.caption.copyWith(
@@ -142,6 +145,7 @@ class _ExplorePageState extends State<ExplorePage> {
                       ),
                     ),
                   ),
+
                 ],
               ),
               const SizedBox(height: 16),

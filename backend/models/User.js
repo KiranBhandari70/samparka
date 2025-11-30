@@ -70,6 +70,33 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Verification documents
+    verificationData: {
+      phoneNumber: {
+        type: String,
+        trim: true,
+      },
+      citizenshipFrontUrl: {
+        type: String,
+      },
+      citizenshipBackUrl: {
+        type: String,
+      },
+      submittedAt: {
+        type: Date,
+      },
+      reviewedAt: {
+        type: Date,
+      },
+      reviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      rejectionReason: {
+        type: String,
+        maxlength: [500, 'Rejection reason cannot exceed 500 characters'],
+      },
+    },
     rewardBalance: {
       type: Number,
       default: 0.0,

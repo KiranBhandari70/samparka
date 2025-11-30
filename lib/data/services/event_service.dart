@@ -11,16 +11,8 @@ class EventService {
   final _repository = EventRepository.instance;
   final _userRepository = UserRepository.instance;
 
-  Future<List<EventModel>> getFeaturedEvents() async {
-    return _repository.getEvents(limit: 10);
-  }
-
   Future<List<EventModel>> getUpcomingEvents() async {
     return _repository.getEvents(limit: 20);
-  }
-
-  Future<List<EventModel>> getEventsByCategory(String category) async {
-    return _repository.getEvents(category: category);
   }
 
   Future<List<EventModel>> searchEvents(String query) async {

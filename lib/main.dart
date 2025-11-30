@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:samparka/presentation/pages/explore/AllUsersPage.dart';
 import 'package:samparka/presentation/pages/settings/about_samparka.dart';
 import 'package:samparka/presentation/pages/settings/help_center_screen.dart';
 
@@ -16,6 +18,7 @@ import 'provider/group_provider.dart';
 import 'provider/user_provider.dart';
 import 'provider/reward_provider.dart';
 import 'provider/offer_provider.dart';
+import 'provider/ticket_provider.dart';
 
 import 'presentation/navigation/main_shell.dart';
 import 'presentation/pages/auth/auth_page.dart';
@@ -31,6 +34,9 @@ import 'presentation/pages/groups/group_detail_page.dart';
 import 'presentation/pages/groups/groups_list_page.dart';
 import 'presentation/pages/groups/create_group_page.dart';
 import 'presentation/pages/profile/edit_profile_page.dart';
+import 'presentation/pages/profile/verification_page.dart';
+import 'presentation/pages/profile/my_events_page.dart';
+import 'presentation/pages/profile/saved_events_page.dart';
 import 'presentation/pages/edit_event/edit_event_page.dart';
 import 'presentation/pages/events/ticket_purchase_page.dart';
 import 'presentation/pages/rewards/rewards_dashboard_page.dart';
@@ -38,11 +44,12 @@ import 'presentation/pages/rewards/partner_businesses_page.dart';
 import 'presentation/pages/admin/admin_dashboard_page.dart';
 import 'presentation/pages/admin/admin_users_page.dart';
 import 'presentation/pages/admin/admin_events_page.dart';
+import 'presentation/pages/admin/admin_verifications_page.dart';
 import 'presentation/pages/business/business_dashboard_page.dart';
 import 'presentation/pages/business/create_offer_page.dart';
 import 'presentation/pages/business/business_events_page.dart';
 import 'presentation/pages/business/business_partners_page.dart';
-import 'presentation/pages/explore/category_explore_page.dart';
+import 'presentation/pages/business/business_details_form_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +85,7 @@ class _SamparkaAppState extends State<SamparkaApp> {
         ChangeNotifierProvider(create: (_) => GroupProvider()),
         ChangeNotifierProvider(create: (_) => RewardProvider()),
         ChangeNotifierProvider(create: (_) => OfferProvider()),
+        ChangeNotifierProvider(create: (_) => TicketProvider()),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -98,8 +106,20 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case MainShell.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final user = args?['user'] as UserModel?;
+              // If no user provided, try to get from AuthProvider
+              if (user == null) {
+                return MaterialPageRoute(
+                  builder: (context) {
+                    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                    final currentUser = authProvider.userModel;
+                    return currentUser != null 
+                        ? MainShell(user: currentUser) 
+                        : const SplashPage();
+                  },
+                );
+              }
               return MaterialPageRoute(
-                builder: (_) => user != null ? MainShell(user: user) : const SplashPage(),
+                builder: (_) => MainShell(user: user),
               );
 
             case InterestsSelectionPage.routeName:
@@ -148,6 +168,18 @@ class _SamparkaAppState extends State<SamparkaApp> {
               final user = args?['user'] as UserModel?;
               return MaterialPageRoute(builder: (_) => EditProfilePage(user: user));
 
+            case VerificationPage.routeName:
+              return MaterialPageRoute(builder: (_) => const VerificationPage());
+
+            case MyEventsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const MyEventsPage());
+
+            case SavedEventsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const SavedEventsPage());
+
+            case AdminVerificationsPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AdminVerificationsPage());
+
             case EditEventPage.routeName:
               final args = settings.arguments as Map<String, dynamic>?;
               final event = args?['event'] as EventModel?;
@@ -194,6 +226,9 @@ class _SamparkaAppState extends State<SamparkaApp> {
             case BusinessPartnersPage.routeName:
               return MaterialPageRoute(builder: (_) => const BusinessPartnersPage());
 
+            case BusinessDetailsFormPage.routeName:
+              return MaterialPageRoute(builder: (_) => const BusinessDetailsFormPage());
+
             case TermsPrivacyScreen.routeName:
               return MaterialPageRoute(builder: (_) => const TermsPrivacyScreen());
 
@@ -205,6 +240,9 @@ class _SamparkaAppState extends State<SamparkaApp> {
 
             case HelpCenterScreen.routeName:
               return MaterialPageRoute(builder: (_) => const HelpCenterScreen());
+
+            case AllUsersPage.routeName:
+              return MaterialPageRoute(builder: (_) => const AllUsersPage());
 
             default:
               return MaterialPageRoute(builder: (_) => const SplashPage());

@@ -49,6 +49,36 @@ class AdminService {
         .map((json) => EventModel.fromJson(json as Map<String, dynamic>))
         .toList();
   }
+
+  /// Get pending verification requests
+  Future<List<Map<String, dynamic>>> getPendingVerifications() async {
+    final response = await _apiClient.get(ApiEndpoints.adminPendingVerifications);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load verification requests: ${response.statusCode}');
+    }
+
+    final data = _apiClient.parseResponse(response);
+    final users = data?['users'] as List<dynamic>? ?? [];
+    return users.cast<Map<String, dynamic>>();
+  }
+
+  /// Review verification (approve or reject)
+  Future<void> reviewVerification(String userId, String action, {String? rejectionReason}) async {
+    final response = await _apiClient.patch(
+      ApiEndpoints.adminReviewVerification(userId),
+      body: {
+        'action': action,
+        if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      },
+    );
+
+    if (response.statusCode != 200) {
+      final errorData = _apiClient.parseResponse(response);
+      final errorMessage = errorData?['message'] as String?;
+      throw Exception(errorMessage ?? 'Failed to review verification: ${response.statusCode}');
+    }
+  }
 }
 
 

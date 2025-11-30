@@ -177,24 +177,5 @@ class GroupProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchGroupById(String id) async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      _selectedGroup = await _groupService.getGroupById(id);
-
-      if (_selectedGroup != null) {
-        _messages = await _groupService.getMessages(id);
-      }
-
-      _setLoading(false);
-      notifyListeners();
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
 
 }

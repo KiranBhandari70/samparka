@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/colors.dart';
+import '../../../core/theme/text_styles.dart';
 import '../../../data/models/event_model.dart';
 import '../../../data/services/admin_service.dart';
 import '../../../data/services/event_service.dart';
@@ -134,7 +135,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
 
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
-                          child: EventCard(
+                          child: _AdminEventCard(
                             event: event,
                             onDetails: () {
                               Navigator.of(context).pushNamed(
@@ -142,56 +143,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                                 arguments: {'event': event},
                               );
                             },
-                            // For admin, use the "join" action as delete for now
-                            onJoin: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Delete Event'),
-                                  content: Text(
-                                      'Are you sure you want to delete "${event.title}"?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.accentRed,
-                                      ),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-
-                              if (confirm != true) return;
-
-                              try {
-                                await EventService.instance.deleteEvent(event.id);
-                                setState(() {
-                                  _allEvents.removeWhere(
-                                      (e) => e.id == event.id);
-                                });
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                        Text('Event deleted successfully'),
-                                    backgroundColor: AppColors.accentRed,
-                                  ),
-                                );
-                              } catch (_) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Failed to delete event'),
-                                  ),
-                                );
-                              }
-                            },
+                            onDelete: () => _deleteEvent(event),
                           ),
                         );
                       },
@@ -202,5 +154,242 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteEvent(EventModel event) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: const Text('Delete Event'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete this event?',
+              style: AppTextStyles.body,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.accentRed.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.event, size: 20, color: AppColors.accentRed),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      style: AppTextStyles.bodyBold.copyWith(
+                        color: AppColors.accentRed,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.body.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Show loading
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      await EventService.instance.deleteEvent(event.id);
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      setState(() {
+        _allEvents.removeWhere((e) => e.id == event.id);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event deleted successfully'),
+            backgroundColor: AppColors.accentGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete event: ${e.toString()}'),
+            backgroundColor: AppColors.accentRed,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+}
+
+class _AdminEventCard extends StatelessWidget {
+  final EventModel event;
+  final VoidCallback onDetails;
+  final VoidCallback onDelete;
+
+  const _AdminEventCard({
+    required this.event,
+    required this.onDetails,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadow.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onDetails,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Event Image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    event.imageUrlOrPlaceholder,
+                    width: 70,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: AppColors.border,
+                        child: const Icon(Icons.event, size: 40),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Event Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.title,
+                        style: AppTextStyles.heading3,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_month, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_formatDate(event.dateTime)} • ${event.timeLabel}',
+                            style: AppTextStyles.caption,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.place, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              event.locationName,
+                              style: AppTextStyles.caption,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Delete Button
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.accentRed),
+                  onPressed: onDelete,
+                  tooltip: 'Delete Event',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return "${months[date.month - 1]} ${date.day}, ${date.year}";
   }
 }

@@ -18,6 +18,7 @@ import searchRoutes from './routes/searchRoutes.js';
 import esewaRoutes from './routes/esewaRoutes.js';
 import rewardRoutes from './routes/rewardRoutes.js';
 import offerRoutes from './routes/offerRoutes.js';
+import ticketRoutes from './routes/ticketRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,6 +110,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/esewa', esewaRoutes);
 app.use('/api/v1/rewards', rewardRoutes);
 app.use('/api/v1/offers', offerRoutes);
+app.use('/api/v1/tickets', ticketRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFound);

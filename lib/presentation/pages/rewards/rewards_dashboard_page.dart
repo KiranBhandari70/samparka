@@ -5,7 +5,9 @@ import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../provider/auth_provider.dart';
 import '../../../provider/reward_provider.dart';
+import '../../../provider/offer_provider.dart';
 import '../../../data/models/reward_transaction_model.dart';
+import '../../../data/models/offer_model.dart';
 import '../../widgets/primary_button.dart';
 
 class RewardsDashboardPage extends StatefulWidget {
@@ -27,20 +29,28 @@ class _RewardsDashboardPageState extends State<RewardsDashboardPage> {
   Future<void> _loadRewardData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final rewardProvider = Provider.of<RewardProvider>(context, listen: false);
+    final offerProvider = Provider.of<OfferProvider>(context, listen: false);
     
     final userId = authProvider.currentUserId;
     if (userId != null && userId.isNotEmpty) {
-      await rewardProvider.loadRewardDashboard(userId);
+      await Future.wait([
+        rewardProvider.loadRewardDashboard(userId),
+        offerProvider.loadOffers(refresh: true),
+      ]);
     }
   }
 
   Future<void> _refreshData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final rewardProvider = Provider.of<RewardProvider>(context, listen: false);
+    final offerProvider = Provider.of<OfferProvider>(context, listen: false);
     
     final userId = authProvider.currentUserId;
     if (userId != null && userId.isNotEmpty) {
-      await rewardProvider.refreshData(userId);
+      await Future.wait([
+        rewardProvider.refreshData(userId),
+        offerProvider.loadOffers(refresh: true),
+      ]);
     }
   }
 
@@ -137,33 +147,62 @@ class _RewardsDashboardPageState extends State<RewardsDashboardPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                height: 200,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: const [
-                    _PartnerCard(
-                      name: 'Coffee Shop',
-                      discount: '20% OFF',
-                      pointsRequired: 500,
-                      imageUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4c7c98?w=400',
+              Consumer<OfferProvider>(
+                builder: (context, offerProvider, child) {
+                  final availableOffers = offerProvider.availableOffers.take(5).toList();
+                  
+                  if (availableOffers.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.local_offer_outlined,
+                              size: 48,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No offers available',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Check back later for new discount offers!',
+                              style: AppTextStyles.caption,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                  
+                  return SizedBox(
+                    height: 240,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: availableOffers.length,
+                      itemBuilder: (context, index) {
+                        final offer = availableOffers[index];
+                        return Padding(
+                          padding: EdgeInsets.only(right: index < availableOffers.length - 1 ? 16 : 0),
+                          child: _PartnerCard(
+                            offer: offer,
+                            currentBalance: rewardProvider.currentBalance,
+                          ),
+                        );
+                      },
                     ),
-                    SizedBox(width: 16),
-                    _PartnerCard(
-                      name: 'Restaurant',
-                      discount: '15% OFF',
-                      pointsRequired: 400,
-                      imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400',
-                    ),
-                    SizedBox(width: 16),
-                    _PartnerCard(
-                      name: 'Cinema',
-                      discount: 'Free Ticket',
-                      pointsRequired: 300,
-                      imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400',
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
               Text(
@@ -397,38 +436,32 @@ class _EarningMethodCard extends StatelessWidget {
 }
 
 class _PartnerCard extends StatelessWidget {
-  final String name;
-  final String discount;
-  final int pointsRequired;
-  final String imageUrl;
+  final OfferModel offer;
+  final int currentBalance;
 
   const _PartnerCard({
-    required this.name,
-    required this.discount,
-    required this.pointsRequired,
-    required this.imageUrl,
+    required this.offer,
+    required this.currentBalance,
   });
 
   @override
   Widget build(BuildContext context) {
+    final canAfford = currentBalance >= offer.pointsRequired;
+    
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed('/partner-detail', arguments: {
-          'name': name,
-          'discount': discount,
-          'pointsRequired': pointsRequired,
-        });
+        Navigator.of(context).pushNamed('/partner-businesses');
       },
       child: Container(
         width: 180,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 4),
+              color: AppColors.shadow.withOpacity(0.1),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -438,10 +471,21 @@ class _PartnerCard extends StatelessWidget {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
               child: Image.network(
-                imageUrl,
+                offer.imageUrlOrPlaceholder,
                 height: 100,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 100,
+                    color: AppColors.background,
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: AppColors.textMuted,
+                      size: 32,
+                    ),
+                  );
+                },
               ),
             ),
             Padding(
@@ -450,29 +494,60 @@ class _PartnerCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    offer.businessName,
                     style: AppTextStyles.body.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    discount,
+                    offer.discountText,
                     style: AppTextStyles.heading3.copyWith(
                       color: AppColors.primary,
+                      fontSize: 18,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.stars, size: 16, color: AppColors.accentYellow),
+                      Icon(
+                        Icons.stars_rounded,
+                        size: 16,
+                        color: canAfford ? AppColors.accentYellow : AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
-                      Text(
-                        '$pointsRequired pts',
-                        style: AppTextStyles.caption,
+                      Flexible(
+                        child: Text(
+                          '${offer.pointsRequired} pts',
+                          style: AppTextStyles.caption.copyWith(
+                            color: canAfford ? AppColors.textSecondary : AppColors.textMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
+                  if (!canAfford) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentRed.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Need ${offer.pointsRequired - currentBalance} more',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.accentRed,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

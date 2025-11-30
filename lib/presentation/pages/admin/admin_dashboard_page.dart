@@ -4,6 +4,7 @@ import '../../../core/constants/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import 'admin_users_page.dart';
 import 'admin_events_page.dart';
+import 'admin_verifications_page.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   const AdminDashboardPage({super.key});
@@ -65,7 +66,15 @@ class AdminDashboardPage extends StatelessWidget {
                         Navigator.of(context).pushNamed(AdminEventsPage.routeName);
                       },
                     ),
-
+                    _AdminCard(
+                      icon: Icons.verified_user_rounded,
+                      title: 'Verifications',
+                      subtitle: 'Review verification requests',
+                      color: AppColors.accentGreen,
+                      onTap: () {
+                        Navigator.of(context).pushNamed(AdminVerificationsPage.routeName);
+                      },
+                    ),
                   ],
                 ),
               ),

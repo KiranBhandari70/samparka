@@ -8,7 +8,7 @@ import {
   redeemOffer,
   getOfferCategories,
 } from '../controllers/offerController.js';
-import upload from '../middleware/upload.js';
+import { upload } from '../middleware/upload.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 const router = express.Router();

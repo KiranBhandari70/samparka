@@ -12,7 +12,6 @@ class EventProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _error;
-  List<EventModel> _featuredEvents = [];
   List<EventModel> _upcomingEvents = [];
   List<EventModel> _filteredEvents = [];
   List<EventModel> _userEvents = [];
@@ -23,7 +22,6 @@ class EventProvider extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   String? get error => _error;
-  List<EventModel> get featuredEvents => _featuredEvents;
   List<EventModel> get upcomingEvents => _upcomingEvents;
   List<EventModel> get filteredEvents => _filteredEvents;
   List<EventModel> get userEvents => _userEvents;
@@ -38,20 +36,6 @@ class EventProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<void> loadFeaturedEvents() async {
-    _setLoading(true);
-    _clearError();
-
-    try {
-      _featuredEvents = await _eventService.getFeaturedEvents();
-      _setLoading(false);
-      notifyListeners();
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
 
   Future<void> loadUpcomingEvents() async {
     _setLoading(true);
@@ -68,30 +52,10 @@ class EventProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> filterEventsByCategory(String? category) async {
-    if (category == null) {
-      _filteredEvents = _featuredEvents;
-      notifyListeners();
-      return;
-    }
-
-    _setLoading(true);
-    _clearError();
-
-    try {
-      _filteredEvents = await _eventService.getEventsByCategory(category);
-      _setLoading(false);
-      notifyListeners();
-    } catch (e) {
-      _setError(e.toString());
-      _setLoading(false);
-      notifyListeners();
-    }
-  }
 
   Future<void> searchEvents(String query) async {
     if (query.isEmpty) {
-      _filteredEvents = _featuredEvents;
+      _filteredEvents = _upcomingEvents;
       notifyListeners();
       return;
     }
@@ -131,7 +95,6 @@ class EventProvider extends ChangeNotifier {
 
     try {
       await _eventService.joinEvent(id);
-      await loadFeaturedEvents();
       await loadUpcomingEvents();
       _setLoading(false);
       notifyListeners();
@@ -150,7 +113,6 @@ class EventProvider extends ChangeNotifier {
 
     try {
       await _eventService.leaveEvent(id);
-      await loadFeaturedEvents();
       await loadUpcomingEvents();
       _setLoading(false);
       notifyListeners();
@@ -195,7 +157,6 @@ class EventProvider extends ChangeNotifier {
     try {
       await _eventService.createEvent(eventData, imageFile: imageFile);
       // Reload events after creation
-      await loadFeaturedEvents();
       await loadUpcomingEvents();
       _setLoading(false);
       notifyListeners();
@@ -215,7 +176,6 @@ class EventProvider extends ChangeNotifier {
     try {
       await _eventService.updateEvent(id, eventData, imageFile: imageFile);
       // Reload events after update
-      await loadFeaturedEvents();
       await loadUpcomingEvents();
       // Reload user events if we have any
       if (_userEvents.isNotEmpty) {
@@ -239,12 +199,10 @@ class EventProvider extends ChangeNotifier {
     try {
       await _eventService.deleteEvent(id);
       // Remove from local lists
-      _featuredEvents.removeWhere((e) => e.id == id);
       _upcomingEvents.removeWhere((e) => e.id == id);
       _filteredEvents.removeWhere((e) => e.id == id);
       _userEvents.removeWhere((e) => e.id == id);
       // Reload events to ensure UI is updated
-      await loadFeaturedEvents();
       await loadUpcomingEvents();
       _setLoading(false);
       notifyListeners();

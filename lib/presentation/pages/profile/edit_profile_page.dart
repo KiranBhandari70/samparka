@@ -334,53 +334,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
                 const SizedBox(height: 24),
 
-                Row(
-                  children: [
-                    Text('Profile Verification', style: AppTextStyles.heading3),
-                    const Spacer(),
-                    Switch(
-                      value: _isVerified,
-                      onChanged: (value) {
-                        setState(() => _isVerified = value);
-                        if (value) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Verification request submitted. It may take 24-48 hours.'),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-
-                if (_isVerified)
-                  Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.accentGreen),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.verified, color: AppColors.accentGreen),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Your profile is verified',
-                            style: AppTextStyles.body.copyWith(
-                              color: AppColors.accentGreen,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 24),
-
                 Text('Interests', style: AppTextStyles.heading3),
                 const SizedBox(height: 12),
 

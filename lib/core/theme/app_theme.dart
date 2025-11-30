@@ -8,7 +8,7 @@ class AppTheme {
   static ThemeData get light {
     final base = ThemeData.light();
     return base.copyWith(
-      useMaterial3: false,
+      useMaterial3: true,
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
       colorScheme: base.colorScheme.copyWith(

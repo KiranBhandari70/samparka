@@ -1,6 +1,7 @@
 import Payment from '../models/paymentModel.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import Ticket from '../models/Ticket.js';
 import axios from 'axios';
 import { config } from '../config/env.js';
 import RewardService from '../services/rewardService.js';
@@ -9,6 +10,9 @@ const ESEWA_MERCHANT_CODE = config.esewaMerchantCode;
 const ESEWA_VERIFY_URL = config.esewaVerifyUrl;
 
 export const createPayment = async (req, res) => {
+  let ticketsCreated = 0;
+  let ticketCreationError = null;
+  
   try {
     const { userId, eventId, amount, refId, pid, ticketCount = 1, tierLabel } = req.body;
     
@@ -103,7 +107,89 @@ export const createPayment = async (req, res) => {
         await event.save();
         console.log('Event updated with attendee details');
 
-        // 5️⃣ Add reward points (0.5% of ticket cost)
+        // 5️⃣ Create tickets for the user
+        try {
+          console.log('Creating tickets...', { userId, eventId, paymentId: payment._id, ticketCount, tierLabel, amount });
+          const tickets = [];
+          const amountPerTicket = amount / ticketCount;
+          ticketsCreated = 0; // Reset counter
+          ticketCreationError = null; // Reset error
+          
+          for (let i = 0; i < ticketCount; i++) {
+            try {
+              // Generate unique ticket number before creating
+              const timestamp = Date.now().toString(36).toUpperCase();
+              const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+              const microTime = process.hrtime.bigint().toString(36).toUpperCase();
+              const ticketNumber = `TKT-${timestamp}-${random}-${microTime.slice(-4)}`;
+              
+              // Create ticket data object
+              const ticketData = {
+                userId: userId,
+                eventId: eventId,
+                paymentId: payment._id,
+                ticketCount: 1, // Each ticket is individual
+                tierLabel: tierLabel || 'Standard',
+                amountPaid: amountPerTicket,
+                status: 'active',
+                ticketNumber: ticketNumber, // Set ticket number explicitly
+              };
+              
+              console.log(`Creating ticket ${i + 1}/${ticketCount} with data:`, {
+                ...ticketData,
+                ticketNumber: ticketNumber
+              });
+              
+              // Create the ticket
+              const ticket = await Ticket.create(ticketData);
+              
+              // Verify ticket was saved
+              const savedTicket = await Ticket.findById(ticket._id);
+              if (!savedTicket) {
+                throw new Error('Ticket was not saved to database');
+              }
+              
+              tickets.push(ticket);
+              ticketsCreated++;
+              console.log(`✅ Ticket ${i + 1}/${ticketCount} created successfully:`, {
+                ticketId: ticket._id.toString(),
+                ticketNumber: ticket.ticketNumber,
+                userId: ticket.userId.toString(),
+                eventId: ticket.eventId.toString(),
+                amountPaid: ticket.amountPaid,
+                status: ticket.status
+              });
+            } catch (singleTicketError) {
+              console.error(`❌ Error creating ticket ${i + 1}:`, {
+                error: singleTicketError.message,
+                stack: singleTicketError.stack,
+                name: singleTicketError.name,
+                errors: singleTicketError.errors,
+                code: singleTicketError.code
+              });
+              ticketCreationError = singleTicketError.message;
+              // Continue creating other tickets even if one fails
+            }
+          }
+          
+          if (ticketsCreated > 0) {
+            console.log(`Successfully created ${ticketsCreated} out of ${ticketCount} ticket(s) for user`);
+          } else {
+            console.error('CRITICAL: No tickets were created despite successful payment!');
+            console.error('This is a critical error - payment succeeded but tickets were not created');
+          }
+        } catch (ticketError) {
+          console.error('Error in ticket creation process:', ticketError);
+          console.error('Ticket error details:', {
+            message: ticketError.message,
+            stack: ticketError.stack,
+            name: ticketError.name,
+            errors: ticketError.errors
+          });
+          ticketCreationError = ticketError.message;
+        }
+
+        // 6️⃣ Add reward points (0.5% of ticket cost)
         try {
           const rewardPoints = RewardService.calculateTicketRewardPoints(amount);
           console.log(`Calculating reward points: ${amount} * 0.5% = ${rewardPoints} points`);
@@ -144,7 +230,9 @@ export const createPayment = async (req, res) => {
         ticketCount: payment.ticketCount,
         tierLabel: payment.tierLabel
       },
-      verificationError
+      verificationError,
+      ticketsCreated: success ? ticketsCreated : undefined,
+      ticketCreationError: success && ticketCreationError ? ticketCreationError : undefined
     };
 
     console.log('Sending response:', responseData);
