@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/group_model.dart';
@@ -25,9 +30,11 @@ class GroupService {
       );
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to GroupModel list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, groups: [...] }
+        final data = responseData?['groups'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => GroupModel.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load groups: ${response.statusCode}');
@@ -42,8 +49,9 @@ class GroupService {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupModel
-        throw UnimplementedError('Parse group from JSON');
+        // Backend returns { success: true, group: {...} }
+        final groupData = data?['group'] ?? data;
+        return GroupModel.fromJson(groupData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to load group: ${response.statusCode}');
@@ -52,17 +60,19 @@ class GroupService {
     }
   }
 
-  Future<GroupModel> createGroup(Map<String, dynamic> groupData) async {
+  Future<GroupModel> createGroup(Map<String, dynamic> groupData, {File? imageFile}) async {
     try {
-      final response = await _apiClient.post(
-        ApiEndpoints.createGroup,
-        body: groupData,
+      final response = await _createOrUpdateGroupMultipart(
+        endpoint: ApiEndpoints.createGroup,
+        groupData: groupData,
+        imageFile: imageFile,
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupModel
-        throw UnimplementedError('Parse group from JSON');
+        // Backend returns { success: true, group: {...} }
+        final responseData = data?['group'] ?? data;
+        return GroupModel.fromJson(responseData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to create group: ${response.statusCode}');
@@ -100,9 +110,11 @@ class GroupService {
       final response = await _apiClient.get(ApiEndpoints.groupMessages(groupId));
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to GroupMessage list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, messages: [...] }
+        final data = responseData?['messages'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => GroupMessage.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load messages: ${response.statusCode}');
@@ -120,13 +132,44 @@ class GroupService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to GroupMessage
-        throw UnimplementedError('Parse message from JSON');
+        // Backend returns { success: true, message: {...} }
+        final messageData = data?['message'] ?? data;
+        return GroupMessage.fromJson(messageData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to send message: ${response.statusCode}');
     } catch (e) {
       throw Exception('Error sending message: $e');
     }
+  }
+
+  Future<http.Response> _createOrUpdateGroupMultipart({
+    required String endpoint,
+    required Map<String, dynamic> groupData,
+    File? imageFile,
+  }) async {
+    if (imageFile != null) {
+      final fields = <String, String>{};
+      groupData.forEach((key, value) {
+        if (value == null) return;
+        if (value is List || value is Map) {
+          fields[key] = jsonEncode(value);
+        } else {
+          fields[key] = value.toString();
+        }
+      });
+
+      return _apiClient.postMultipart(
+        endpoint,
+        fields: fields,
+        file: imageFile,
+        fileFieldName: 'image',
+      );
+    }
+
+    return _apiClient.post(
+      endpoint,
+      body: groupData,
+    );
   }
 }

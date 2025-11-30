@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/models/group_model.dart';
@@ -30,8 +32,13 @@ class GroupProvider extends ChangeNotifier {
 
     try {
       _groups = await _groupService.getGroups();
-      _myGroups = _groups.where((g) => g.isJoined).toList();
-      _suggestedGroups = _groups.where((g) => !g.isJoined).toList();
+
+      // Filter groups where the user is a member
+      _myGroups = _groups.where((g) => g.isMember == true).toList();
+
+      // Suggested groups = groups the user is NOT in
+      _suggestedGroups = _groups.where((g) => g.isMember != true).toList();
+
       _setLoading(false);
       notifyListeners();
     } catch (e) {
@@ -40,6 +47,7 @@ class GroupProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 
   Future<void> loadGroupDetails(String id) async {
     _setLoading(true);
@@ -59,13 +67,18 @@ class GroupProvider extends ChangeNotifier {
     }
   }
 
+
+
   Future<bool> joinGroup(String id) async {
     _setLoading(true);
     _clearError();
 
     try {
       await _groupService.joinGroup(id);
-      await loadGroups();
+
+      await loadGroups();           // Reload all groups
+      await loadGroupDetails(id);   // 🔥 Reload the selected group with updated members
+
       _setLoading(false);
       notifyListeners();
       return true;
@@ -76,6 +89,7 @@ class GroupProvider extends ChangeNotifier {
       return false;
     }
   }
+
 
   Future<bool> leaveGroup(String id) async {
     _setLoading(true);
@@ -128,6 +142,24 @@ class GroupProvider extends ChangeNotifier {
     }
   }
 
+  Future<GroupModel?> createGroup(Map<String, dynamic> groupData, {File? imageFile}) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final group = await _groupService.createGroup(groupData, imageFile: imageFile);
+      await loadGroups(); // Reload groups list
+      _setLoading(false);
+      notifyListeners();
+      return group;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return null;
+    }
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
   }
@@ -144,4 +176,6 @@ class GroupProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+
 }

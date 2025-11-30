@@ -6,6 +6,7 @@ class ApiEndpoints {
   // Auth endpoints
   static const String login = '$baseUrl/auth/login';
   static const String register = '$baseUrl/auth/register';
+  static const String googleLogin = '$baseUrl/auth/google';
   static const String logout = '$baseUrl/auth/logout';
   static const String refreshToken = '$baseUrl/auth/refresh';
   static const String forgotPassword = '$baseUrl/auth/forgot-password';
@@ -17,6 +18,14 @@ class ApiEndpoints {
   static const String updateProfile = '$baseUrl/user/profile';
   static const String uploadAvatar = '$baseUrl/user/avatar';
   static const String interests = '$baseUrl/user/interests';
+  static const String submitVerification = '$baseUrl/user/verification';
+  static const String registeredUsers = '$baseUrl/users/registered';
+
+  // Admin endpoints
+  static const String adminUsers = '$baseUrl/users/admin';
+  static const String adminPendingVerifications = '$baseUrl/users/admin/verifications';
+  static String adminBlockUser(String userId) => '$baseUrl/users/admin/$userId/block';
+  static String adminReviewVerification(String userId) => '$baseUrl/users/admin/$userId/verification';
 
   // Event endpoints
   static const String events = '$baseUrl/events';
@@ -24,6 +33,8 @@ class ApiEndpoints {
   static String joinEvent(String id) => '$events/$id/join';
   static String leaveEvent(String id) => '$events/$id/leave';
   static String eventAttendees(String id) => '$events/$id/attendees';
+  static String eventComments(String id) => '$events/$id/comments';
+  static String eventCommentById(String eventId, String commentId) => '$events/$eventId/comments/$commentId';
   static const String createEvent = '$baseUrl/events';
   static String updateEvent(String id) => '$events/$id';
   static String deleteEvent(String id) => '$events/$id';
@@ -48,4 +59,5 @@ class ApiEndpoints {
   static const String searchEvents = '$baseUrl/search/events';
   static const String searchGroups = '$baseUrl/search/groups';
   static const String searchUsers = '$baseUrl/search/users';
+
 }

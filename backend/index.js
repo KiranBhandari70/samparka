@@ -1,103 +1,123 @@
-// Load environment variables first
-import dotenv from "dotenv";
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import connectDB from './config/database.js';
+import { config } from './config/env.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
+import User from './models/User.js';
 
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import db from "./config/db.js";
-import config from "./config/config.js";
-import { errorHandler, notFound } from "./middlewares/errormiddleware.js";
+// Routes
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import groupRoutes from './routes/groupRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
+import esewaRoutes from './routes/esewaRoutes.js';
+import rewardRoutes from './routes/rewardRoutes.js';
+import offerRoutes from './routes/offerRoutes.js';
+import ticketRoutes from './routes/ticketRoutes.js';
 
-// Import routes
-import authRoutes from "./routes/authroutes.js";
-import userRoutes from "./routes/usersroutes.js";
-import categoryRoutes from "./routes/categoriesroutes.js";
-import eventRoutes from "./routes/eventsroutes.js";
-import commentRoutes from "./routes/commentsroutes.js";
-import groupRoutes from "./routes/groupsroutes.js";
-import chatRoutes from "./routes/chatsroutes.js";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Initialize Express app
+// Connect to database
+connectDB();
+
+// Ensure a default admin user exists (for development / initial setup)
+const ensureAdminUser = async () => {
+  try {
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin) {
+      return;
+    }
+
+    const email = config.adminEmail;
+    const password = config.adminPassword;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({
+        email,
+        name: 'Platform Admin',
+        authProvider: 'email',
+        role: 'admin',
+        verified: true,
+        location: {
+          type: 'Point',
+          coordinates: [0, 0],
+        },
+      });
+    } else {
+      user.role = 'admin';
+    }
+
+    await user.hashPassword(password);
+    await user.save();
+
+    console.log(
+      `Admin user ensured. Email: ${email}, Password: ${password} (change in production!)`
+    );
+  } catch (error) {
+    console.error('Failed to ensure admin user:', error.message);
+  }
+};
+
+ensureAdminUser();
+
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(morgan("dev"));
+app.use(cors({
+  origin: config.corsOrigin,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
 
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.status(200).json({
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Health check (optional)
+app.get('/health', (req, res) => {
+  res.json({
     success: true,
-    message: "Server is running",
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// 🔥 Default root route to fix "Not Found - /"
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Samparka Backend is Live 🚀',
     timestamp: new Date().toISOString()
   });
 });
 
-// API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/events", eventRoutes);
-app.use("/api/comments", commentRoutes);
-app.use("/api/groups", groupRoutes);
-app.use("/api/chats", chatRoutes);
-
-// 404 handler
-app.use(notFound);
+// API Routes
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/events', eventRoutes);
+app.use('/api/v1/groups', groupRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/search', searchRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/esewa', esewaRoutes);
+app.use('/api/v1/rewards', rewardRoutes);
+app.use('/api/v1/offers', offerRoutes);
+app.use('/api/v1/tickets', ticketRoutes);
 
 // Error handling middleware (must be last)
+app.use(notFound);
 app.use(errorHandler);
 
-// Start server
-const PORT = config.PORT || 5000;
+const PORT = config.port;
 
-const startServer = async () => {
-  try {
-    // Connect to database
-    await db.connect();
-
-    // Start listening
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
-};
-
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Promise Rejection:", err);
-  // Close server & exit process
-  process.exit(1);
+app.listen(PORT, () => {
+  console.log(`Server running in ${config.nodeEnv} mode on port ${PORT}`);
 });
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  process.exit(1);
-});
-
-// Graceful shutdown
-process.on("SIGTERM", async () => {
-  console.log("SIGTERM signal received: closing HTTP server");
-  await db.disconnect();
-  process.exit(0);
-});
-
-process.on("SIGINT", async () => {
-  console.log("SIGINT signal received: closing HTTP server");
-  await db.disconnect();
-  process.exit(0);
-});
-
-// Start the server
-startServer();
-
-export default app;
-

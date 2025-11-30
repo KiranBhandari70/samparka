@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/strings.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../data/models/category_model.dart';
-import '../../../data/services/mock_data.dart';
+import '../../../data/models/event_model.dart';
+import '../../../data/models/user_model.dart';
+import '../../../provider/event_provider.dart';
+import '../../../provider/user_provider.dart';
 import '../../widgets/event_card.dart';
-import '../home/event_detail_page.dart';
+import '../events/event_detail_page.dart';
+import '../events/ticket_purchase_page.dart';
+import 'AllUsersPage.dart';
 
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
@@ -17,15 +23,56 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   EventCategory? _selectedCategory;
+  String _searchQuery = '';
+
+  final List<EventCategory> _categories = EventCategory.values;
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadEvents();
+      _loadRegisteredUsers();
+    });
+  }
+
+
+  Future<void> _loadEvents() async {
+    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+    await eventProvider.loadUpcomingEvents();
+  }
+
+  Future<void> _loadRegisteredUsers() async {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    await userProvider.loadRegisteredUsers();
+  }
+
+  List<EventModel> _getFilteredEvents(EventProvider eventProvider) {
+    // If there's a search query, use filtered events from provider
+    if (_searchQuery.isNotEmpty) {
+      final searchResults = eventProvider.filteredEvents;
+      return searchResults.where((event) {
+        final matchesCategory = _selectedCategory == null
+            ? true
+            : event.categoryString?.toLowerCase() ==
+            _selectedCategory!.label.toLowerCase();
+        return matchesCategory;
+      }).toList();
+    }
+    
+    // Otherwise filter provider events
+    return eventProvider.upcomingEvents.where((event) {
+      final matchesCategory = _selectedCategory == null
+          ? true
+          : event.categoryString?.toLowerCase() ==
+          _selectedCategory!.label.toLowerCase();
+      return matchesCategory;
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final categories = MockData.categories;
-    final nearbyEvents = MockData.upcomingEvents.where((event) {
-      if (_selectedCategory == null) return true;
-      return event.category == _selectedCategory;
-    }).toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -38,30 +85,41 @@ class _ExplorePageState extends State<ExplorePage> {
                 AppStrings.exploreHeading,
                 style: AppTextStyles.heading2,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 5),
               Text(
                 AppStrings.exploreSubtitle,
                 style: AppTextStyles.subtitle,
               ),
               const SizedBox(height: 20),
-              _SearchField(),
-              const SizedBox(height: 24),
-              Text(
-                'Categories',
-                style: AppTextStyles.heading3,
+
+              // SEARCH FIELD
+              _SearchField(
+                onChanged: (value) {
+                  setState(() => _searchQuery = value);
+                  if (value.isNotEmpty) {
+                    final eventProvider = Provider.of<EventProvider>(context, listen: false);
+                    eventProvider.searchEvents(value);
+                  } else {
+                    _loadEvents();
+                  }
+                },
               ),
+
+              const SizedBox(height: 24),
+              Text('Categories', style: AppTextStyles.heading3),
               const SizedBox(height: 16),
+
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: categories
+                children: _categories
                     .map(
                       (category) => _CategoryCard(
                     category: category,
                     isSelected: _selectedCategory == category,
                     onTap: () {
                       setState(() {
-                        _selectedCategory = category == _selectedCategory
+                        _selectedCategory = _selectedCategory == category
                             ? null
                             : category;
                       });
@@ -70,26 +128,153 @@ class _ExplorePageState extends State<ExplorePage> {
                 )
                     .toList(),
               ),
+
               const SizedBox(height: 28),
-              Text(
-                'Nearby Events',
-                style: AppTextStyles.heading3,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Registered Users', style: AppTextStyles.heading3),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed(AllUsersPage.routeName);
+                    },
+                    child: Text(
+                      'See All',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+
+                ],
               ),
               const SizedBox(height: 16),
-              ...nearbyEvents.map(
-                    (event) => EventCard(
-                  event: event,
-                  onJoin: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('You joined ${event.title}!')),
+
+              SizedBox(
+                height: 140,
+                child: Consumer<UserProvider>(
+                  builder: (context, userProvider, _) {
+                    if (userProvider.registeredUsersLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (userProvider.registeredUsersError != null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Failed to load users',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _loadRegisteredUsers,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final users = userProvider.registeredUsers;
+                    if (users.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No registered users',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        return _UserCard(user: users[index]);
+                      },
                     );
                   },
-                  onDetails: () => Navigator.of(context).pushNamed(
-                    EventDetailPage.routeName,
-                    arguments: EventDetailArgs(event: event),
-                  ),
                 ),
               ),
+
+              const SizedBox(height: 28),
+              Text('Nearby Events', style: AppTextStyles.heading3),
+              const SizedBox(height: 16),
+
+              Consumer<EventProvider>(
+                builder: (context, eventProvider, child) {
+                  if (eventProvider.isLoading && eventProvider.upcomingEvents.isEmpty && _searchQuery.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  if (eventProvider.error != null && eventProvider.upcomingEvents.isEmpty && _searchQuery.isEmpty) {
+                    return Center(
+                      child: Column(
+                        children: [
+                          Text(
+                            'Error loading events: ${eventProvider.error}',
+                            style: AppTextStyles.body.copyWith(
+                              color: Colors.red,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadEvents,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final filteredEvents = _getFilteredEvents(eventProvider);
+                  if (filteredEvents.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No events found',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: filteredEvents.map(
+                      (event) => EventCard(
+                        event: event,
+                        onJoin: () {
+                          Navigator.of(context).pushNamed(
+                            TicketPurchasePage.routeName,
+                            arguments: {
+                              'event': event,
+                              'ticketPrice': event.ticketTiers.isNotEmpty
+                                  ? event.ticketTiers.first.price
+                                  : 0.0,
+                            },
+                          );
+                        },
+                        onDetails: () {
+                          Navigator.of(context).pushNamed(
+                            EventDetailPage.routeName,
+                            arguments: {'event': event},
+                          );
+                        },
+                      ),
+                    ).toList(),
+                  );
+                },
+              ),
+
               const SizedBox(height: 32),
             ],
           ),
@@ -99,6 +284,33 @@ class _ExplorePageState extends State<ExplorePage> {
   }
 }
 
+/// SEARCH FIELD
+class _SearchField extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+
+  const _SearchField({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: 'Search events...',
+        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(24),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+}
+
+/// CATEGORY CARD
 class _CategoryCard extends StatelessWidget {
   final EventCategory category;
   final bool isSelected;
@@ -112,82 +324,62 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = MockData.categoryColors(category);
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 120,
-        padding: const EdgeInsets.symmetric(vertical: 18),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: colors,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: isSelected ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: colors.last.withOpacity(0.25),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
-          border: isSelected
-              ? Border.all(color: Colors.white, width: 2)
-              : Border.all(color: Colors.transparent),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(_iconForCategory(category), color: Colors.white, size: 32),
-            const SizedBox(height: 12),
-            Text(
-              category.label,
-              style: AppTextStyles.button.copyWith(color: Colors.white),
-            ),
-          ],
+        child: Text(
+          category.label,
+          style: AppTextStyles.body.copyWith(
+            color: isSelected ? Colors.white : AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
   }
 }
 
-IconData _iconForCategory(EventCategory category) {
-  switch (category) {
-    case EventCategory.music:
-      return Icons.music_note_rounded;
-    case EventCategory.art:
-      return Icons.palette_rounded;
-    case EventCategory.sports:
-      return Icons.fitness_center_rounded;
-    case EventCategory.tech:
-      return Icons.memory_rounded;
-    case EventCategory.social:
-      return Icons.people_alt_rounded;
-    case EventCategory.food:
-      return Icons.restaurant_rounded;
-    case EventCategory.wellness:
-      return Icons.self_improvement_rounded;
-    case EventCategory.others:
-      return Icons.event_rounded;
-  }
-}
+/// USER CARD
+class _UserCard extends StatelessWidget {
+  final UserModel user;
 
-class _SearchField extends StatelessWidget {
+  const _UserCard({required this.user});
+
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: 'Search events',
-        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textMuted),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(24),
-          borderSide: BorderSide.none,
-        ),
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 36,
+            backgroundImage: user.avatarUrlResolved != null
+                ? NetworkImage(user.avatarUrlResolved!)
+                : null,
+            backgroundColor: AppColors.border,
+            child: user.avatarUrlResolved == null
+                ? const Icon(Icons.person, color: AppColors.textSecondary)
+                : null,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            user.name,
+            style: AppTextStyles.caption,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

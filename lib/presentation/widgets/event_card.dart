@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:samparka/data/models/category_model.dart';
 import '../../core/constants/colors.dart';
 import '../../core/theme/text_styles.dart';
-import '../../data/models/category_model.dart';
 import '../../data/models/event_model.dart';
-import '../../data/services/mock_data.dart';
 
 class EventCard extends StatelessWidget {
   final EventModel event;
@@ -21,71 +20,48 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = MockData.categoryColors(event.category);
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 24,
-            offset: Offset(0, 12),
+            color: AppColors.shadowDark.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: AppColors.shadow.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
-                child: AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: Image.network(
-                    event.imageUrl,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 16,
-                top: 16,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: colors),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    event.category.label,
-                    style: AppTextStyles.caption.copyWith(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildImageStack(),
           Padding(
             padding:
-            const EdgeInsets.symmetric(horizontal: 24).copyWith(top: 20),
+            const EdgeInsets.symmetric(horizontal: 24).copyWith(top: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   event.title,
-                  style: AppTextStyles.heading3,
+                  style: AppTextStyles.heading3.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 _EventInfoRow(
                   icon: Icons.calendar_month_rounded,
-                  label:
-                  '${_formatDate(event.dateTime)}, ${event.timeLabel}',
+                  label: '${_formatDate(event.dateTime)}, ${event.timeLabel}',
                 ),
                 const SizedBox(height: 8),
                 _EventInfoRow(
@@ -95,24 +71,50 @@ class EventCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 _EventInfoRow(
                   icon: Icons.people_alt_rounded,
-                  label:
-                  '${event.attendeeCount}/${event.capacity} going',
+                  label: '${event.attendeeCount}/${event.capacity} going',
                 ),
                 const SizedBox(height: 20),
                 if (showActions)
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: onJoin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: AppColors.primaryGradient,
+                            ),
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withOpacity(0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            onPressed: onJoin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(28),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.add_circle_outline, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Join Event',
+                                  style: AppTextStyles.button,
+                                ),
+                              ],
                             ),
                           ),
-                          child: const Text('Join Event'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -120,11 +122,32 @@ class EventCard extends StatelessWidget {
                         child: OutlinedButton(
                           onPressed: onDetails,
                           style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: BorderSide(
+                              color: AppColors.border,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(28),
                             ),
                           ),
-                          child: const Text('Details'),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 18,
+                                color: AppColors.textPrimary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Details',
+                                style: AppTextStyles.button.copyWith(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -138,30 +161,94 @@ class EventCard extends StatelessWidget {
     );
   }
 
+  Widget _buildImageStack() {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: AspectRatio(
+            aspectRatio: 16 / 10,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  event.imageUrlOrPlaceholder,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: AppColors.primaryGradient,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.event_rounded,
+                        size: 50,
+                        color: Colors.white,
+                      ),
+                    );
+                  },
+                ),
+                // Gradient overlay for better text readability
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.3),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          right: 20,
+          top: 20,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: event.categoryColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              event.category.label,
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   String _formatDate(DateTime date) {
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    final weekday = [
-      'Mon',
-      'Tue',
-      'Wed',
-      'Thu',
-      'Fri',
-      'Sat',
-      'Sun',
-    ][date.weekday - 1];
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final weekday = weekdays[date.weekday - 1];
     return '$weekday, ${months[date.month - 1]} ${date.day}';
   }
 }
@@ -170,22 +257,27 @@ class _EventInfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _EventInfoRow({
-    required this.icon,
-    required this.label,
-  });
+  const _EventInfoRow({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.primary, size: 20),
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 18),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             label,
             style: AppTextStyles.body.copyWith(
               color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),

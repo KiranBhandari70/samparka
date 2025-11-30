@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../network/api_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/user_model.dart';
@@ -15,8 +17,9 @@ class UserRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to UserModel
-        throw UnimplementedError('Parse user from JSON');
+        // Backend returns { success: true, user: {...} }
+        final userData = data?['user'] as Map<String, dynamic>? ?? data ?? {};
+        return UserModel.fromJson(userData);
       }
 
       throw Exception('Failed to load profile: ${response.statusCode}');
@@ -34,8 +37,9 @@ class UserRepository {
 
       if (response.statusCode == 200) {
         final data = _apiClient.parseResponse(response);
-        // TODO: Parse JSON to UserModel
-        throw UnimplementedError('Parse user from JSON');
+        // Backend returns { success: true, user: {...} }
+        final userData = data?['user'] ?? data;
+        return UserModel.fromJson(userData as Map<String, dynamic>);
       }
 
       throw Exception('Failed to update profile: ${response.statusCode}');
@@ -44,14 +48,29 @@ class UserRepository {
     }
   }
 
-  Future<String> uploadAvatar(String imagePath) async {
+  Future<UserModel> uploadAvatar(String imagePath) async {
     try {
-      // TODO: Implement file upload using multipart request
-      final response = await _apiClient.post(ApiEndpoints.uploadAvatar);
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        throw Exception('Selected image does not exist.');
+      }
+
+      final response = await _apiClient.postMultipart(
+        ApiEndpoints.uploadAvatar,
+        file: file,
+        fileFieldName: 'avatar',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = _apiClient.parseResponse(response);
-        return data?['avatarUrl'] as String? ?? '';
+        final userJson = data?['user'] as Map<String, dynamic>?;
+
+        if (userJson != null) {
+          return UserModel.fromJson(userJson);
+        }
+
+        // Fallback: fetch the latest profile if user data was not returned
+        return await getProfile();
       }
 
       throw Exception('Failed to upload avatar: ${response.statusCode}');
@@ -75,19 +94,75 @@ class UserRepository {
     }
   }
 
+  Future<List<UserModel>> getRegisteredUsers({int limit = 10}) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiEndpoints.registeredUsers}?limit=$limit',
+      );
+
+      if (response.statusCode == 200) {
+        final data = _apiClient.parseResponse(response);
+        final users = data?['users'] as List<dynamic>? ?? [];
+        return users
+            .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+      }
+
+      throw Exception('Failed to load registered users: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error fetching registered users: $e');
+    }
+  }
+
   Future<List<EventModel>> getUserEvents(String userId) async {
     try {
       final response = await _apiClient.get(ApiEndpoints.userEvents(userId));
 
       if (response.statusCode == 200) {
-        final data = _apiClient.parseListResponse(response) ?? [];
-        // TODO: Parse JSON to EventModel list
-        return [];
+        final responseData = _apiClient.parseResponse(response);
+        // Backend returns { success: true, events: [...] }
+        final data = responseData?['events'] as List<dynamic>? ?? 
+                     _apiClient.parseListResponse(response) ?? [];
+        return data.map((json) => EventModel.fromJson(json as Map<String, dynamic>)).toList();
       }
 
       throw Exception('Failed to load user events: ${response.statusCode}');
     } catch (e) {
       throw Exception('Error fetching user events: $e');
+    }
+  }
+
+  Future<bool> submitVerification({
+    required String phoneNumber,
+    required String citizenshipFrontPath,
+    required String citizenshipBackPath,
+  }) async {
+    try {
+      final frontFile = File(citizenshipFrontPath);
+      final backFile = File(citizenshipBackPath);
+
+      if (!await frontFile.exists() || !await backFile.exists()) {
+        throw Exception('Citizenship card images not found');
+      }
+
+      final response = await _apiClient.postMultipart(
+        ApiEndpoints.submitVerification,
+        fields: {'phoneNumber': phoneNumber},
+        files: [
+          {'file': frontFile, 'fieldName': 'citizenshipFront'},
+          {'file': backFile, 'fieldName': 'citizenshipBack'},
+        ],
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      }
+
+      final errorData = _apiClient.parseResponse(response);
+      final errorMessage = errorData?['message'] as String?;
+      throw Exception(errorMessage ?? 'Failed to submit verification: ${response.statusCode}');
+    } catch (e) {
+      throw Exception('Error submitting verification: $e');
     }
   }
 }

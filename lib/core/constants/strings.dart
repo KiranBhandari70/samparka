@@ -26,10 +26,8 @@ class AppStrings {
 
   static const String emailPlaceholder = 'Please enter Email';
   static const String passwordPlaceholder = 'Please enter Password';
-  static const String forgotPassword = 'Forgot password ?';
 
   static const String continueWithGoogle = 'Continue with Google';
-  static const String continueWithPhone = 'Continue with Phone';
   static const String terms =
       'By continuing, you agree to our Terms of Service and Privacy Policy';
 
