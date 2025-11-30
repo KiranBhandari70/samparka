@@ -72,6 +72,14 @@ dependencies:
 
   firebase_core: ^3.1.0
 
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/applogo.png"
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -93,6 +101,7 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
 
   # To add assets to your application, add an assets section, like this:
   # assets:
